@@ -1,7 +1,7 @@
 import socket
 import select
 import time
-from multiprocessing import Process, Lock, Pipe
+from threading import Thread, Lock
 
 TIMEOUT = 0.1
 
@@ -13,31 +13,30 @@ class Listener(object):
         self.port = port
         self.sock.bind((self.ip, self.port))
         self.lock = Lock()
-        self.pipe_parentEnd, self.pipe_childEnd = Pipe()
-        self.listen_process = None
+        self.listen_thread = None
+        self.kill = False
 
     def receiveMsg(self, data):
         print("received: %s" % data)
 
     def listen(self):
-        self.listen_process = Process(target=self._listen_thread)
-        self.listen_process.start()
+        self.listen_thread = Thread(target=self._listen_thread)
+        self.listen_thread.start()
 
     def stop_listen(self):
-        self.pipe_parentEnd.send("stop")
         self.lock.acquire()
-        self.listen_process.join()
+        self.kill = True
         self.lock.release()
+        self.listen_thread.join()
 
     def _listen_thread(self):
         while 1:
-            if self.pipe_childEnd.poll():
-                msg = self.pipe_childEnd.recv()
-                if msg == "stop":
-                    return
+            time.sleep(0.0001)
             self.lock.acquire()
+            if self.kill:
+                return
             ready = select.select([self.sock], [], [], TIMEOUT)
             if ready[0]:
                 data, addr = self.sock.recvfrom(4096)
-                self.receiveMsg(data.decode())
+                self.receiveMsg([data.decode()])
             self.lock.release()
