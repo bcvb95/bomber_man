@@ -16,7 +16,7 @@ class Listener(object):
         self.listen_thread = None
         self.kill = False
 
-    def receiveMsg(self, data):
+    def receiveMsg(self, data, from_addr):
         print("received: %s" % data)
 
     def listen(self):
@@ -38,5 +38,5 @@ class Listener(object):
             ready = select.select([self.sock], [], [], TIMEOUT)
             if ready[0]:
                 data, addr = self.sock.recvfrom(4096)
-                self.receiveMsg([data.decode()])
+                self.receiveMsg(data.decode(), addr)
             self.lock.release()
