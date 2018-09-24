@@ -15,7 +15,7 @@ class TestServer(Listener):
     def sendMsg(self, msg, to_ip, to_port):
         self.sock.sendto(msg.encode(), (to_ip, to_port))
 
-    def receiveMsg(self, data):
+    def receiveMsg(self, data, addr):
         print("SERVER received: %s" % data)
 
 
@@ -28,22 +28,20 @@ class Client(Listener):
     def sendMsg(self, msg):
         self.sock.sendto(msg.encode(), (self.serverIP, self.serverPort))
 
-    def receiveMsg(self, data):
+    def receiveMsg(self, data, addr):
         print("CLIENT received: %s" % data)
 
 def test_client():
     server = TestServer("127.0.0.1", SERVER_PORT)
-    server.listen()
     client = Client("127.0.0.1", CLIENT_PORT, "127.0.0.1", SERVER_PORT)
+    server.listen()
     client.listen()
     client.sendMsg("lol")
-    time.sleep(1)
     server.sendMsg("hej", "127.0.0.1", SERVER_PORT)
-    time.sleep(1)
     server.sendMsg("YUP", "127.0.0.1", CLIENT_PORT)
     time.sleep(1)
-    server.stop_listen()
-    client.stop_listen()
+    server.kill()
+    client.kill()
 
 if __name__ == "__main__":
     test_client()
