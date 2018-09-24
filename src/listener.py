@@ -16,7 +16,7 @@ class Listener(object):
         self.pipe_parentEnd, self.pipe_childEnd = Pipe()
         self.listen_process = None
 
-    def receiveMsg(self, data):
+    def receiveMsg(self, data, from_addr):
         print("received: %s" % data)
 
     def listen(self):
@@ -39,5 +39,5 @@ class Listener(object):
             ready = select.select([self.sock], [], [], TIMEOUT)
             if ready[0]:
                 data, addr = self.sock.recvfrom(4096)
-                self.receiveMsg(data.decode())
+                self.receiveMsg(data.decode(), addr)
             self.lock.release()
