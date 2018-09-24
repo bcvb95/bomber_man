@@ -54,6 +54,10 @@ class Listener(object):
         self.listener_lock.release()
         self.listen_thread.join()
 
+    def _sendMsg(self, msg, ip, port):
+        self.sock.sendto(msg.encode(), (ip, port))
+
+
     def receiveMsg(self, data, addr):
         """
         Public method - should be overwritten.
@@ -65,7 +69,6 @@ class Listener(object):
         Private method - should not be overwritten or called from outside the class.
         This method is run by the worker threads.
         """
-        time.sleep(0.0001)
         while True:
             self.pool_cond.acquire() # lock mutex
             while self.job_queue.empty():
