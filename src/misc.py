@@ -1,4 +1,4 @@
-
+import time
 def listToStringParser(lst, seperator=','):
     if len(lst) == 0:
         return ""
@@ -12,3 +12,6 @@ def stringToListParser(string, seperator=','):
 def recentMovesToStringParser(recent_moves, seperator=','):
     moves = [m[0] for m in recent_moves]
     return ("%s" % seperator).join(moves)
+
+def timeInMs():
+    return int(time.time() * 100)
