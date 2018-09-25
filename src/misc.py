@@ -1,4 +1,6 @@
 import time
+from datetime import datetime
+
 def listToStringParser(lst, seperator=','):
     if len(lst) == 0:
         return ""
@@ -14,4 +16,5 @@ def recentMovesToStringParser(recent_moves, seperator=','):
     return ("%s" % seperator).join(moves)
 
 def timeInMs():
-    return int(time.time() * 100)
+    now = datetime.now()
+    return (now.second*1000000) + now.microsecond

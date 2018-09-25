@@ -21,9 +21,8 @@ C4_PORT=4532
 """
     Message types:
 
-        'l' - login
-        'm' - move
-        'p' - ping
+        'l' - client login
+        'm' - client move
         'a' - client sending new moves and ack moves
 """
 
@@ -142,6 +141,7 @@ class Server(Listener):
         for i in range(len(self.recent_moves)):
             if i not in pop_i:
                 new_recent.append(self.recent_moves[i])
+
         self.recent_moves = new_recent
 
         self.rec_moves_lock.release()
@@ -198,6 +198,7 @@ def test_server():
 
     server.startBroadcasting()
     client1.player.make_move("Holla")
+    client2.player.make_move("Right")
     client2.player.make_move("Right")
     client3.player.make_move("left")
     client4.player.make_move("go right now!")
