@@ -175,11 +175,11 @@ class Listener(object):
         addr_key = "%s%s" % (addr[0], addr[1])
         seq = int(seq)
         if addr_key not in self.client_seqs: # New client
-            self.client_seqs[addr_key] = (seq, range(0, seq))
+            self.client_seqs[addr_key] = (seq, list(range(0, seq)))
             if self.verbose: self.log("%s accepted packet with seq %d because it was from a new client." % (self.name, seq))
             return 0
         if freshness > FRESHNESS_TOLERANCE:
-            self.client_seqs[addr_key] = (seq, self.client_seqs[addr_key][1] + range(self.client_seqs[addr_key][0], seq))
+            self.client_seqs[addr_key] = (seq, self.client_seqs[addr_key][1] + list(range(self.client_seqs[addr_key][0], seq)))
             if self.verbose: self.log("%s accepted packet with seq %d because its freshness was above tolerance." % (self.name, seq))
             return 0
         if self.client_seqs[addr_key][0] == seq-1:
