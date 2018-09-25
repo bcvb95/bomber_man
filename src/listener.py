@@ -189,7 +189,7 @@ class Listener(object):
         if addr_key in self.client_seqs:
             missed_seq_list = self.client_seqs[addr_key][1]
             if len(missed_seq_list) > 10:
-                self.client_seqs[addr_key][1] = missed_seq_list[-10:]
+                self.client_seqs[addr_key] = (self.client_seqs[addr_key][0], missed_seq_list[-10:])
             for i in range(len(missed_seq_list)):
                 missed_seq = missed_seq_list[i]
                 if missed_seq == seq:
