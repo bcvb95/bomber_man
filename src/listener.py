@@ -5,15 +5,43 @@ from threading import Thread, Lock, Condition
 from queue import Queue
 
 TIMEOUT = 0.1
+CHECK_RESEND_FREQ = 0.2
+RESEND_TIME = 0.5
+
+# TODO:
+# - Add sequence number to normal packets
+# - Introduce ACK packets
+# - Resend packets that are not acknowledged
+# - Check if sequence number has been seen before when receiving packet
+# - Verbose mode
+# - Log file
+# - Tests for this class
+
+# Changelog
+# - Interface changes:
+#   * Subclasses should now call sendPacket when they want to send packets.
+#   * The listener can have a custom name for debugging
+#   * NOT DONE: Verbose mode
+# - Backend changes:
+#   * Resend packets that are not acknowledged after some time
+#   * NOT DONE: Don't accept packets that have been seen before
 
 class Listener(object):
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, name="listener", verbose=False):
+        # debug
+        self.name = name
+        self.verbose = verbose
         # socket
         self.ip = ip
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
         self.sock.bind((self.ip, self.port))
+
+        # packet resending
+        self.seq = 0
+        self.unacknowledged_packets = []
+        self.last_resend_check = time.time()
 
         # listener thread
         self.listen_thread = None
@@ -54,9 +82,14 @@ class Listener(object):
         self.listener_lock.release()
         self.listen_thread.join()
 
-    def _sendMsg(self, msg, ip, port):
-        self.sock.sendto(msg.encode(), (ip, port))
-
+    def sendPacket(self, data, ip, port, ack=False, arg_seq=-1):
+        if arg_seq != -1:
+            data = "%s-%s" % (data, arg_seq)
+        elif not ack:
+            data = "%s-%d" % (data, self.seq)
+            self.unacknowledged_packets.append((data, "%d" % self.seq, time.time(), (ip, port)))
+            self.seq += 1
+        self.sock.sendto(data.encode(), (ip, port))
 
     def receiveMsg(self, data, addr):
         """
@@ -76,11 +109,48 @@ class Listener(object):
                     return # return if pool is being killed
                 self.pool_cond.wait() # unlock mutex and wait for cond broadcast
             job = self.job_queue.get(block=False) # get the first job in the queue (don't block)
-            if not job: continue # if you didn't get the job anyways
-            data, addr = job # unpack job
-            self.receiveMsg(data, addr) # call receive with data
             self.job_queue.task_done() # notify the queue that the task is done
             self.pool_cond.release() # unlock mutex
+
+            if not job: continue # if you didn't get the job anyways
+            data, addr, job_freshness = job # unpack job
+            self._handlePacket(data, addr, job_freshness)
+
+    def _handlePacket(self, data, addr, freshness):
+        # extract packet type, sequence number and data
+        packet_type = data[0]
+        split_data = data.split('-')
+        data, seq = split_data[0], split_data[1]
+        # handle ack packets
+        if packet_type == 'x':
+            self._getPacketAck(seq)
+            return
+        # handle other packets
+        if freshness == 0:
+            self._sendPacketAck(seq, addr[0], addr[1]) # send ack packet for this packet
+        self.receiveMsg(data, addr) # call receive with data
+
+    def _sendPacketAck(self, seq, ip, port):
+        self.sendPacket("x-%s" % seq, ip, port, ack=True)
+
+    def _getPacketAck(self, seq):
+        for i in range(len(self.unacknowledged_packets)):
+            if self.unacknowledged_packets[i][1] == seq:
+                print("%s got ack for packet '%s'" % (self.name,seq))
+                del self.unacknowledged_packets[i]
+                return
+
+    def _check_resend(self):
+        now = time.time()
+        self.last_resend_check = now
+        for i in range(len(self.unacknowledged_packets)):
+            packet = self.unacknowledged_packets[i]
+            if now - packet[2] > RESEND_TIME:
+                if self.verbose: print("%s resending packet with sequence number %s" % (self.name, packet[1]))
+                ip, port = packet[3]
+                self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
+                self.unacknowledged_packets[i] = (packet[0], packet[1], now, packet[3])
+
 
     def _listen_thread(self):
         """
@@ -93,11 +163,14 @@ class Listener(object):
             self.listener_lock.acquire()
             if self.kill_listen:
                 return # return if listener is being killed
+            now = time.time()
+            if now - self.last_resend_check > CHECK_RESEND_FREQ:
+                self._check_resend()
             ready = select.select([self.sock], [], [], TIMEOUT) # poll the socket
             if ready[0]: # if packets
                 data, addr = self.sock.recvfrom(4096)
                 self.pool_cond.acquire()
-                self.job_queue.put((data.decode(), addr)) # add packet to job queue
+                self.job_queue.put((data.decode(), addr, 0)) # add packet to job queue
                 self.pool_cond.notify_all() # notify workers
                 self.pool_cond.release()
             self.listener_lock.release()
