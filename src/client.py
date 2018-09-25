@@ -23,7 +23,6 @@ class TestServer(Listener):
 
     def receiveMsg(self, data, addr):
         ack_moves, new_moves = stringToListParser(data, ';')
-        print("acked:", ack_moves)
         self.moves = self.moves + stringToListParser(new_moves, ',')
 
 class Client(Listener):
@@ -93,7 +92,7 @@ def test_client(verbose):
     server.broadcast_moves("127.0.0.1", CLIENT_PORT)
     time.sleep(0.1)
     server.broadcast_moves("127.0.0.1", CLIENT_PORT)
-    time.sleep(5)
+    time.sleep(1)
     server.kill()
     client.kill()
 
