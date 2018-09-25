@@ -10,13 +10,13 @@ SERVER_PORT = 6873
 CLIENT_PORT = 6874
 
 class TestServer(Listener):
-    def __init__(self, ip, port, player):
-        Listener.__init__(self, ip, port)
-        self.player = player
+    def __init__(self, ip, port, name="Server", verbose=False):
+        Listener.__init__(self, ip, port, name, verbose)
+        self.player = None
         self.moves = []
 
     def sendMsg(self, msg, to_ip, to_port):
-       self._sendMsg(msg, to_ip, to_port)
+       self.sendPacket(msg, to_ip, to_port)
 
     def broadcast_moves(self, to_ip, to_port):
         self.sendMsg("m" + listToStringParser(self.moves), to_ip, to_port)
@@ -26,8 +26,8 @@ class TestServer(Listener):
         self.moves = self.moves + stringToListParser(new_moves, ',')
 
 class Client(Listener):
-    def __init__(self, ip, port, serverIP, serverPort):
-        Listener.__init__(self, ip, port)
+    def __init__(self, ip, port, serverIP, serverPort, name="Client", verbose=False):
+        Listener.__init__(self, ip, port, name, verbose)
         self.serverIP = serverIP
         self.serverPort = serverPort
         self.player = None
@@ -39,8 +39,7 @@ class Client(Listener):
         self.player_number = None
 
     def sendMsg(self, msg):
-        self._sendMsg(msg, self.serverIP, self.serverPort)
-        #self.sock.sendto(msg.encode(), (self.serverIP, self.serverPort))
+        self.sendPacket(msg, self.serverIP, self.serverPort)
 
     def receiveMsg(self, data, addr):
         msg_type, data = data[0], data[1:]
@@ -59,7 +58,7 @@ class Client(Listener):
                 if len(moves[i][0]) == 0: continue
                 timestamp = int(moves[i][1])
                 moves[i] = moves[i][0].strip()
-                if timestamp > self.latest_move:
+                if timestamp >= self.latest_move:
                     ack_moves.append(moves[i])
                     self.latest_move = timestamp
                     self.player.do_move(moves[i])
@@ -82,7 +81,6 @@ class Client(Listener):
                 # get login response
                 if login_resp == "login_failed":
                     self.logged_in = False
-                    print("CLIENT: login unsuccessful.")
                 elif login_resp == "login_success":
                     self.logged_in = True
                     self.username = parsed_login[1]
@@ -106,13 +104,15 @@ class Player(object):
 
     def do_move(self, move):
         move_list = stringToListParser(move, ':')
-        print("Move by: player %s\nMove: %s\nTime: %s" % (move_list[0][1], move_list[1], move_list[2]))
+        #print("\n\nMove by: player %s\nMove: %s\nTime: %s" % (move_list[0][1], move_list[1], move_list[2]))
 
-def test_client():
+def test_client(verbose):
     player1 = Player(1)
     player2 = Player(2)
-    server = TestServer("127.0.0.1", SERVER_PORT, player1)
-    client = Client("127.0.0.1", CLIENT_PORT, "127.0.0.1", SERVER_PORT, player2)
+    server = TestServer("127.0.0.1", SERVER_PORT, verbose=verbose)
+    server.player = player1
+    client = Client("127.0.0.1", CLIENT_PORT, "127.0.0.1", SERVER_PORT, verbose=verbose)
+    client.player = player2
     server.listen()
     client.listen()
     client.player.make_move('r')
@@ -122,9 +122,9 @@ def test_client():
     server.broadcast_moves("127.0.0.1", CLIENT_PORT)
     time.sleep(0.1)
     server.broadcast_moves("127.0.0.1", CLIENT_PORT)
-    time.sleep(0.1)
+    time.sleep(5)
     server.kill()
     client.kill()
 
 if __name__ == "__main__":
-    test_client()
+    test_client(verbose=True)
