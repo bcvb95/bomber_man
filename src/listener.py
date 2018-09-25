@@ -136,7 +136,6 @@ class Listener(object):
     def _getPacketAck(self, seq):
         for i in range(len(self.unacknowledged_packets)):
             if self.unacknowledged_packets[i][1] == seq:
-                print("%s got ack for packet '%s'" % (self.name,seq))
                 del self.unacknowledged_packets[i]
                 return
 
