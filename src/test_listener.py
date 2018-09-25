@@ -1,17 +1,18 @@
 import time
+import datetime
 from listener import Listener
 
 class TestServer(Listener):
-    def __init__(self, ip, port, name="Server", logfile=None):
-        Listener.__init__(self, ip, port, name=name, verbose=True, logfile=logfile)
+    def __init__(self, ip, port, multiple_cons=True, name="Server", logfile=None):
+        Listener.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Server received: %s" % msg)
 
 
 class TestClient(Listener):
-    def __init__(self, ip, port, name="Client", logfile=None):
-        Listener.__init__(self, ip, port, name=name, verbose=True, logfile=logfile)
+    def __init__(self, ip, port, multiple_cons=False, name="Client", logfile=None):
+        Listener.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Client received: %s" % msg)
@@ -23,6 +24,7 @@ def main():
 
     # Open a file to use as log file
     log_file_handle = open("log.txt", 'w')
+    log_file_handle.write("%s\n%sSTART LOG%s\n" % (datetime.datetime.now(), "-"*30, "-"*30))
 
     # Initialize two listeners
     server  = TestServer(ip, server_port, logfile=log_file_handle)
