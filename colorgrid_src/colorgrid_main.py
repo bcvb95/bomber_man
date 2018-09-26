@@ -1,31 +1,42 @@
 import sys
-import pygame
-from pygame.locals import *
 import math
 from misc import *
 
-from listener import Listener
+from colorgrid_consts import *
+from packetmanager import PacketManager
 from server import Server
 from client import Client 
 from player import Player
 
-SCR_SIZE = SCR_WIDTH, SCR_HEIGHT = 500, 500 
 
-BLACK = Color(0,0,0,1)
-WHITE = Color(255,255,255,1)
-RED = Color(255,0,0,1)
-GREEN = Color(0,255,0,1)
-BLUE = Color(0,0,255,1)
-ORANGE = Color(255,255,0,1)
+"""
+    Server  |    ip: 127.0.0.1, port: 8909
+    Client1 |    ip: 127.0.0.1, port: 8403
+"""
 
-def main():
+
+def start_game(username, client_port, server_ip, server_port, is_server):
     pygame.init()
     clock = pygame.time.Clock()
 
     screen = pygame.display.set_mode(SCR_SIZE) 
-    color_grid = ColorGrid(100)
+    colorgrid = ColorGrid(20)
 
-    print("Welcom to Color-Grid!")
+    client_ip = getMyIP()
+
+    player = None
+    
+    if is_server: # if player is a server
+        player = Player(colorgrid,client_ip, client_port, client_ip, server_port, is_server)
+        time.sleep(1)
+        player.server.startBroadcasting()
+    else:         # if the player is not a server
+        player = Player(colorgrid, client_ip, client_port, server_ip, server_port )
+
+    # log in
+    while not player.client.logged_in:
+        player.client.logIn(username)
+        time.sleep(0.1)
 
     while True:
         screen.fill(WHITE)
@@ -36,17 +47,21 @@ def main():
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
             if event.type == QUIT or keys[K_ESCAPE]:
+                player.server.stopBroadcasting()
+                player.kill()
+                player.logfile.close()
                 sys.exit()
-
-            if keys[K_w]:
-                color_grid.colorTile(3, BLUE)
-            
+                
             if event.type == MOUSEBUTTONDOWN:
                if event.button == 1:
-                   color_grid.colorTileClick(mouse_x, mouse_y, BLUE)
+                   colorgrid.colorTileClick(mouse_x, mouse_y, CLIENT_COLORS[player.client.player_number])
 
-        color_grid.drawGrid(screen)
+            if keys[K_m]:
+                player.make_move("MOVE")
 
+        player.colorgrid_lock.acquire()
+        colorgrid.drawGrid(screen)
+        player.colorgrid_lock.release()
 
         clock.tick(10)
         pygame.display.flip()
@@ -72,7 +87,6 @@ class ColorGrid(object):
             else:
                 pygame.draw.rect(screen, rect[0], rect[1])
             # else if color grid
-     
 
     def colorTileClick(self ,x ,y , color):
         # find tile closest to mousepress
