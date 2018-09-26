@@ -5,6 +5,8 @@ from misc import *
 
 from packetmanager import PacketManager
 
+STALLED_TOLERANCE = 10
+
 class Client(PacketManager):
     def __init__(self, ip, port, serverIP, serverPort, player = None , name="Client",logfile=None,  verbose=False):
         PacketManager.__init__(self, ip, port, name, logfile=logfile, verbose=verbose)
@@ -12,6 +14,9 @@ class Client(PacketManager):
         self.serverPort = serverPort
         self.latest_move = 0
         self.player = player
+
+        self.server_seq = -1
+        self.stalled_packets = []
 
         ## added by bjørn
         self.logged_in = False
@@ -21,31 +26,49 @@ class Client(PacketManager):
     def sendMsg(self, msg):
         self.sendPacket(msg, self.serverIP, self.serverPort)
 
-    def receiveMsg(self, data, addr):
+    def receiveMsg(self, data, addr, forced=False):
+        orig_data = data
         msg_type, data = data[0], data[1:]
+        data_lst = data.split('>')
+        data, seq = data_lst[0].strip(), int(data_lst[1].strip())
+        if not forced:
+            if seq > self.server_seq+1:
+                self.stalled_packets.append((orig_data, addr, seq, 0))
+                return
+            elif seq <= self.server_seq:
+                return
+            self.server_seq = seq
+
         if msg_type == 'l':
             self.handleLoginResponse(data, addr)
 
         if msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
 
+        for i in range(len(self.stalled_packets)):
+            force_handle = self.stalled_packets[i][3] >= STALLED_TOLERANCE
+            if self.stalled_packets[i][2] == self.server_seq+1 or force_handle:
+                stalled_data, from_addr = self.stalled_packets[i][0], self.stalled_packets[i][1]
+                del self.stalled_packets[i]
+                self.receiveMsg(stalled_data, from_addr, force_handle)
+                return
+            else:
+                self.stalled_packets[i] = (self.stalled_packets[0], self.stalled_packets[1], self.stalled_packets[2], stalled_packets[3] + 1)
+
+
     def handleNewMovesPacket(self, data):
         ack_moves = []
-        new_moves = listToStringParser(self.player.get_moves())
         if len(data) > 0:
-            moves = sorted([(x, x.split(':')[-1]) for x in stringToListParser(data)], key=lambda x: x[1])
+            moves = data.split(',')
             for i in range(len(moves)):
                 if len(moves[i][0]) == 0: continue
-                timestamp = int(moves[i][1])
-                moves[i] = moves[i][0].strip()
-                if timestamp > self.latest_move:
-                    ack_moves.append(moves[i])
-                    self.latest_move = timestamp
-
-                    self.player.do_move(moves[i])
-
+                ack_moves.append(moves[i])
+                self.player.do_move(moves[i])
+        new_moves = listToStringParser(self.player.get_moves())
         ack_moves = listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
+
+
 
     ## added by bjørn
     def logIn(self, username):
