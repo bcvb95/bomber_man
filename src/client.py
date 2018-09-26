@@ -3,36 +3,17 @@ import socket
 import time
 from misc import *
 
-from listener import Listener
+from packetmanager import PacketManager
 
-IP = "127.0.0.1"
-SERVER_PORT = 6873
-CLIENT_PORT = 6874
-
-class TestServer(Listener):
-    def __init__(self, ip, port, multiple_cons=False, name="Server", verbose=False):
-        Listener.__init__(self, ip, port, multiple_cons, name, verbose)
-        self.moves = []
-
-    def sendMsg(self, msg, to_ip, to_port):
-       self.sendPacket(msg, to_ip, to_port)
-
-    def broadcast_moves(self, to_ip, to_port):
-        self.sendMsg("m" + listToStringParser(self.moves), to_ip, to_port)
-
-    def receiveMsg(self, data, addr):
-        ack_moves, new_moves = stringToListParser(data, ';')
-        self.moves = self.moves + stringToListParser(new_moves, ',')
-
-class Client(Listener):
+class Client(PacketManager):
     def __init__(self, ip, port, serverIP, serverPort, player = None , name="Client", verbose=False):
-        Listener.__init__(self, ip, port, name, verbose)
+        PacketManager.__init__(self, ip, port, name, verbose)
         self.serverIP = serverIP
         self.serverPort = serverPort
         self.latest_move = 0
         self.player = player
 
-        ## added by bjørn 
+        ## added by bjørn
         self.logged_in = False
         self.username = ""
         self.player_number = None
@@ -77,7 +58,7 @@ class Client(Listener):
             if not self.logged_in: # if not logged in
                 # handle login/logout related
                 parsed_login = stringToListParser(data, seperator=',')
-                login_resp = parsed_login[0] 
+                login_resp = parsed_login[0]
                 # get login response
                 if login_resp == "login_failed":
                     self.logged_in = False

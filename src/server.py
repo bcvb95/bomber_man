@@ -6,18 +6,10 @@ TODO:
 import pygame
 import socket
 import time
-from listener import Listener
+from packetmanager import PacketManager
 from client import Client
 from threading import Thread, Lock
 from misc import *
-
-IP="127.0.0.1"
-
-S_PORT=8338
-C1_PORT=3883
-C2_PORT=3838
-C3_PORT=7743
-C4_PORT=4532
 
 """
     Message types:
@@ -27,14 +19,14 @@ C4_PORT=4532
         'a' - client sending new moves and ack moves
 """
 
-class Server(Listener):
+class Server(PacketManager):
     def __init__(self, ip, port, multiple_cons=True):
-        Listener.__init__(self, ip, port, multiple_cons)
-        
+        PacketManager.__init__(self, ip, port, multiple_cons)
+
         self.connected_clients = []
         self.recent_moves = []
 
-        self.rec_moves_lock = Lock() 
+        self.rec_moves_lock = Lock()
         self.conn_clients_lock = Lock()
 
         self.broadcastThread = Thread(target=self._broadcastThreadFun)
@@ -53,7 +45,7 @@ class Server(Listener):
 
         if msg_type == 'a': # client sending new moves and ack-moves
             self.handleClientMovesAndAcks(data)
-    
+
     def startBroadcasting(self):
         """ Starts the broadcasting thread """
         self.broadcastLock.acquire()
@@ -69,7 +61,7 @@ class Server(Listener):
         self.broadcastThread.join()
 
     def _broadcastThreadFun(self):
-        """ 
+        """
         Calls broadcast function every 0.05 second
         """
         self.broadcastLock.acquire()
@@ -79,7 +71,7 @@ class Server(Listener):
         while doBC:
             self.broadcastRecentMoves()
             # sleep before next broadcast
-            time.sleep(0.05) 
+            time.sleep(0.05)
             self.broadcastLock.acquire()
             doBC = self.do_broadcast
             self.broadcastLock.release()
@@ -92,23 +84,23 @@ class Server(Listener):
         self.rec_moves_lock.acquire()
         num_clients = len(self.connected_clients)
         num_recent_moves = len(self.recent_moves)
-        
+
         for i in range(num_clients):
             c_uname, c_ip, c_port = self.connected_clients[i]
-            b_msg = "m" 
+            b_msg = "m"
             # if recent moves to send
-            if num_recent_moves > 0:    
+            if num_recent_moves > 0:
                 moves_str = recentMovesToStringParser(self.recent_moves)
                 b_msg += moves_str
             else:
                 pass # do nothing
-            
+
             self.sendMsg(b_msg, c_ip, c_port)
         self.conn_clients_lock.release()
         self.rec_moves_lock.release()
 
 
-    def handleClientMovesAndAcks(self, data):        
+    def handleClientMovesAndAcks(self, data):
         """
             Handle clients sending new- and acknowlegded moves.
         """
@@ -132,10 +124,10 @@ class Server(Listener):
                 if ack == rec_move: # if client acks a recent move
                     self.recent_moves[j] = (rec_move, self.recent_moves[j][1] + 1)
                 # if all clients have ackknowledged the move
-                if self.recent_moves[j][1] == len(self.connected_clients): 
+                if self.recent_moves[j][1] == len(self.connected_clients):
                     if j not in pop_i:
                         print("acked: %s, with %d number of acks" % (ack, self.recent_moves[j][1]))
-                        pop_i.append(j)                    
+                        pop_i.append(j)
 
         # remove completely acked moves
         new_recent = []

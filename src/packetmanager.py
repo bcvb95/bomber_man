@@ -10,8 +10,6 @@ RESEND_TIME = 0.5
 FRESHNESS_TOLERANCE = 5
 
 # TODO:
-# - Verbose mode
-# - Log file
 # - Tests for this class
 
 # Changelog
@@ -20,14 +18,15 @@ FRESHNESS_TOLERANCE = 5
 #     - Should be True if multiple connections will be made to this object
 #     - Defaults to False which means only one other peer should be used
 #   * Subclasses should now call sendPacket when they want to send packets.
-#   * The listener can have a custom name for debugging
-#   * NOT DONE: Verbose mode
+#   * The packet manager can have a custom name for debugging
+#   * Verbose mode - Get a lot of output
+#   * Log file - If you specify a logfile output is redirected there.
 # - Backend changes:
 #   * Resend packets that are not acknowledged after some time
 #   * Don't accept packets that have been seen before by checking sequence numbers
 
-class Listener(object):
-    def __init__(self, ip, port, multiple_cons, name="listener", verbose=False, logfile=None):
+class PacketManager(object):
+    def __init__(self, ip, port, multiple_cons, name="packetManager", verbose=False, logfile=None):
         # debug
         self.name = name
         self.verbose = verbose
@@ -179,6 +178,7 @@ class Listener(object):
         - They are one larger than stored sequence number (update stored sequence number)
         - If freshness of packet is above FRESHNESS_TOLERANCE (update stored sequence number)
         - They are smaller than stored sequence number and in missed sequence numbers (don't update stored sequence number)
+
         Does not accept sequence numbers if:
         - They are smaller than stored sequence number and not in missed sequence numbers
 
@@ -220,6 +220,10 @@ class Listener(object):
         return 1
 
     def _sendPacketAck(self, seq, ip, port):
+        """
+        Sends ack for package.
+        Ack messages has a 'x' prefix.
+        """
         if self.verbose: self.log("sends packet ack for pack with seq %s" % seq)
         self.sendPacket("x-%s" % seq, ip, port, ack=True)
 

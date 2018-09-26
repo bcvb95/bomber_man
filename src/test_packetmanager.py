@@ -1,18 +1,18 @@
 import time
 import datetime
-from listener import Listener
+from packetmanager import PacketManager
 
-class TestServer(Listener):
+class TestServer(PacketManager):
     def __init__(self, ip, port, multiple_cons=True, name="Server", logfile=None):
-        Listener.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
+        PacketManager.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Server received: %s" % msg)
 
 
-class TestClient(Listener):
+class TestClient(PacketManager):
     def __init__(self, ip, port, multiple_cons=False, name="Client", logfile=None):
-        Listener.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
+        PacketManager.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Client received: %s" % msg)
@@ -26,7 +26,7 @@ def main():
     log_file_handle = open("log.txt", 'w')
     log_file_handle.write("%s\n%sSTART LOG%s\n" % (datetime.datetime.now(), "-"*30, "-"*30))
 
-    # Initialize two listeners
+    # Initialize two packet managers
     server  = TestServer(ip, server_port, logfile=log_file_handle)
     client1 = TestClient(ip, client1_port, logfile=log_file_handle)
 
@@ -37,7 +37,7 @@ def main():
     # Test packets
     server.sendPacket("LOL", ip, client1_port)
 
-    # Kill listeners
+    # Kill packet managers
     time.sleep(1)
     server.kill()
     client1.kill()
