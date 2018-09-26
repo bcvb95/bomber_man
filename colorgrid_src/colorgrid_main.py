@@ -5,7 +5,7 @@ from misc import *
 from colorgrid_consts import *
 from packetmanager import PacketManager
 from server import Server
-from client import Client 
+from client import Client
 from player import Player
 
 MOVE_CD = 0.001
@@ -23,14 +23,15 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     mouse_down = False
     last_mouse_keys = []
     last_cd = time.time()
-    
-    screen = pygame.display.set_mode(SCR_SIZE) 
-    colorgrid = ColorGrid(100)
+
+
+    screen = pygame.display.set_mode(SCR_SIZE)
+    colorgrid = ColorGrid(10)
 
     client_ip = getMyIP()
 
     player = None
-    
+
     if is_server: # if player is a server
         player = Player(colorgrid,client_ip, client_port, client_ip, server_port, is_server)
         time.sleep(1)
@@ -63,16 +64,18 @@ def start_game(username, client_port, server_ip, server_port, is_server):
             if event.type == MOUSEBUTTONUP:
                 mouse_down = False
 
+
         if mouse_down:
             pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
             move  = str(pressed_i)
+            if player.server:
+                print(len(player.server.recent_moves))
             if last_mouse_keys[0]:
-                if player.server:
-                    print(player.server.recent_moves)
                 move += '/l'
                 if (time.time() - last_cd) > MOVE_CD:
                     player.make_move(move)
                     last_cd = time.time()
+
             if last_mouse_keys[2]:
                 move += '/r'
                 if (time.time() - last_cd) > MOVE_CD:
@@ -87,7 +90,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 class ColorGrid(object):
     def __init__(self, rect_size):
         self.rect_size = rect_size
-        
+
         self.grid_rects = []
         for x in range(0, SCR_WIDTH, self.rect_size):
             for y in range(0, SCR_HEIGHT, self.rect_size):
@@ -107,7 +110,7 @@ class ColorGrid(object):
 
 
     def colorRect(self, index, color):
-        self.grid_rects[index] = (color, self.grid_rects[index][1])  
+        self.grid_rects[index] = (color, self.grid_rects[index][1])
 
     def getRectIndexFromClick(self ,x ,y):
         # find tile closest to mousepress

@@ -32,8 +32,18 @@ class Server(PacketManager):
         self.broadcastThread = Thread(target=self._broadcastThreadFun)
         self.broadcastLock = Lock()
 
+        self.con_seqs = {}
+
     def sendMsg(self, msg, to_ip, to_port):
         """ Send a packet """
+        addr_key = "%s%s" % (to_ip, to_port)
+        if addr_key in self.con_seqs:
+            seq = self.con_seqs[addr_key]
+            self.con_seqs[addr_key] += 1
+        else:
+            seq = 0
+            self.con_seqs[addr_key] = seq
+        msg = "%s>%d" % (msg, seq)
         self.sendPacket(msg, to_ip, to_port)
 
     def receiveMsg(self, data, from_addr):

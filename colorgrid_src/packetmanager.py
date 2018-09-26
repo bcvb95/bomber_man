@@ -10,6 +10,7 @@ RESEND_TIME = 0.5
 RESEND_AMOUNT_TOLERANCE = 5
 FRESHNESS_TOLERANCE = 5
 WORKER_THREADS = 8
+MAX_PACK_SIZE = 4096
 
 # TODO:
 # - Tests for this class
@@ -120,11 +121,10 @@ class PacketManager(object):
         Also logs sent packets so they can be resend later if they are not acknowledged in between.
         """
         seq = int(arg_seq)
+        addr_key = "%s%s" % (ip, port)
         if seq != -1:
-            data = "%s-%d" % (data, seq)
             self.send_mutex.acquire()
         elif not ack:
-            addr_key = "%s%s" % (ip, port)
             self.send_mutex.acquire()
             if addr_key in self.connection_seqs:
                 seq = self.connection_seqs[addr_key]
@@ -132,16 +132,21 @@ class PacketManager(object):
                 seq = 0
             self.connection_seqs[addr_key] = seq + 1
 
-            data = "%s-%d" % (data, seq)
+        pack_max_size = MAX_PACK_SIZE-len(str(seq))
+        if len(data) > pack_max_size:
+            if self.verbose: self.log("ERROR - packet %s to send is too big. truncating." % seq)
+            data = data[:pack_max_size-1]
+        data = "%s-%d" % (data, seq)
+
+        if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
+        self.sock.sendto(data.encode(), (ip, port))
+        if not ack:
             # Unacknowledged packet: (data, seq, last_resend, addr, resend_count)
             unack_pack = (data, "%d" % seq, time.time(), (ip, port), 0)
             if addr_key in self.unacknowledged_packets:
                 self.unacknowledged_packets[addr_key].append(unack_pack)
             else:
                 self.unacknowledged_packets[addr_key] = [unack_pack]
-        if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
-        self.sock.sendto(data.encode(), (ip, port))
-        if not ack:
             self.send_mutex.release()
 
     def receiveMsg(self, data, addr):
@@ -344,7 +349,7 @@ class PacketManager(object):
                 self._check_resend()
             ready = select.select([self.sock], [], [], TIMEOUT) # poll the socket
             if ready[0]: # if packets
-                data, addr = self.sock.recvfrom(4096)
+                data, addr = self.sock.recvfrom(MAX_PACK_SIZE)
                 self.pool_cond.acquire()
                 self.job_queue.put((data.decode(), addr, 0)) # add packet to job queue
                 self.pool_cond.notify_all() # notify workers
