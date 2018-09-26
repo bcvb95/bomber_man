@@ -197,11 +197,13 @@ class PacketManager(object):
             self._sendPacketAck(seq, addr[0], addr[1]) # send ack packet for this packet
         else:
             if self.verbose: self.log("handles old packet(f=%d): [data='%s', ip='%s', port='%s', seq='%s']" % (freshness, ori_data, addr[0], addr[1], seq))
-        if self._checkSeq(seq, addr, freshness) == 1:
+        checkSeq_extcode = self._checkSeq(seq, addr, freshness)
+        if checkSeq_extcode != 0:
             if self.verbose: self.log("rejected packet(f=%d): [data='%s', ip='%s', port='%s', seq='%s']" % (freshness, ori_data, addr[0], addr[1], seq))
-            self.pool_cond.acquire()
-            self.job_queue.put((ori_data, addr, freshness+1)) # put job back to queue
-            self.pool_cond.release()
+            if checkSeq_extcode == 1:
+                self.pool_cond.acquire()
+                self.job_queue.put((ori_data, addr, freshness+1)) # put job back to queue
+                self.pool_cond.release()
             return
         if self.verbose: self.log("accepted packet(f=%d): [data='%s', ip='%s', port='%s', seq='%s']" % (freshness, ori_data, addr[0], addr[1], seq))
         self.receiveMsg(data, addr) # call receive with data
@@ -212,7 +214,7 @@ class PacketManager(object):
         Accepts sequence numbers if:
         - They are 0 (stores as new client)
         - They are one larger than stored sequence number (update stored sequence number)
-        - If freshness of packet is above FRESHNESS_TOLERANCE (update stored sequence number)
+        - If freshness of packet is above FRESHNESS_TOLERANCE and larger than stored (update stored sequence number)
         - They are smaller than stored sequence number and in missed sequence numbers (don't update stored sequence number)
 
         Does not accept sequence numbers if:
@@ -246,17 +248,21 @@ class PacketManager(object):
             if self.verbose: self.log("accepted packet with seq %d because it was in correct sequence." % seq)
             self.checkseq_mutex.release()
             return 0
-        if addr_key in self.client_latest_seqs:
-            if len(self.client_latest_seqs[addr_key][1]) > 10:
-                self.client_latest_seqs[addr_key] = (self.client_latest_seqs[addr_key][0], self.client_latest_seqs[addr_key][1][-10:])
-            missed_seq_list = self.client_latest_seqs[addr_key][1]
-            for i in range(len(missed_seq_list)):
-                missed_seq = missed_seq_list[i]
-                if missed_seq == seq:
-                    if self.verbose: self.log("accepted packet with seq %d because it was a missing sequence number." % seq)
-                    del self.client_latest_seqs[addr_key][1][i]
-                    self.checkseq_mutex.release()
-                    return 0
+
+        if len(self.client_latest_seqs[addr_key][1]) > 10:
+            self.client_latest_seqs[addr_key] = (self.client_latest_seqs[addr_key][0], self.client_latest_seqs[addr_key][1][-10:])
+        missed_seq_list = self.client_latest_seqs[addr_key][1]
+        for i in range(len(missed_seq_list)):
+            missed_seq = missed_seq_list[i]
+            if missed_seq == seq:
+                if self.verbose: self.log("accepted packet with seq %d because it was a missing sequence number." % seq)
+                del self.client_latest_seqs[addr_key][1][i]
+                self.checkseq_mutex.release()
+                return 0
+        if seq < self.client_latest_seqs[addr_key][0]:
+            if self.verbose: self.log("rejected packet with seq %d because it was below stored seq and not missing." % seq)
+            self.checkseq_mutex.release()
+            return 2
         if self.verbose: self.log("rejected packet with seq %d because it was in wrong sequence. expected seq %d from (%s,%s)" % (seq, self.client_latest_seqs[addr_key][0], addr[0], addr[1]))
         self.checkseq_mutex.release()
         return 1

@@ -1,5 +1,6 @@
 import time
 import datetime
+import os
 from packetmanager import PacketManager
 
 class TestServer(PacketManager):
@@ -34,11 +35,11 @@ def main():
     client4_port = 6077
 
     # Open log files
-    log_file_handle_s  = open("../test_log/test_server.log", 'w')
-    log_file_handle_c1 = open("../test_log/test_client1.log", 'w')
-    log_file_handle_c2 = open("../test_log/test_client2.log", 'w')
-    log_file_handle_c3 = open("../test_log/test_client3.log", 'w')
-    log_file_handle_c4 = open("../test_log/test_client4.log", 'w')
+    log_file_handle_s  = open(os.path.dirname(__file__) + "/../test_log/test_server.log", 'w')
+    log_file_handle_c1 = open(os.path.dirname(__file__) + "/../test_log/test_client1.log", 'w')
+    log_file_handle_c2 = open(os.path.dirname(__file__) + "/../test_log/test_client2.log", 'w')
+    log_file_handle_c3 = open(os.path.dirname(__file__) + "/../test_log/test_client3.log", 'w')
+    log_file_handle_c4 = open(os.path.dirname(__file__) + "/../test_log/test_client4.log", 'w')
 
     # Write header with timestamp to log files
     now = datetime.datetime.now()
@@ -96,7 +97,8 @@ def main():
     log_file_handle_c2.close()
     log_file_handle_c3.close()
     log_file_handle_c4.close()
-
+    print("-"*50)
+    print("The test is over... now.")
     print("Log files placed in ../test_log/")
 
 if __name__ == "__main__":
