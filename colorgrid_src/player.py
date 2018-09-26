@@ -9,10 +9,8 @@ class Player(object):
     def __init__(self,colorgrid,  ip, port, server_ip, server_port, is_server=False):
         self.id = 0
         self.new_moves = []
-
         self.server = None
         self.is_server = is_server
-
         self.logfile = open("./output.log", 'w')
 
         if self.is_server:
@@ -41,9 +39,14 @@ class Player(object):
         self.colorgrid_lock.acquire()
         move_list = stringToListParser(move, ':')
         col_i = int(move_list[0][1]) # who did the move?
-        rect_i = int(move_list[1])   # what rect to color
+        rect_i = int(move_list[1][0:-2])   # what rect to color
+        delete = (move_list[1][-1] == 'r')
+
         # color the rect!
-        self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i-1])
+        if not delete:
+            self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i-1])
+        else:
+            self.colorgrid.colorRect(rect_i, None)
         self.colorgrid_lock.release()
 
     def print_players_online(self):
