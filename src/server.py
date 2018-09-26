@@ -1,12 +1,13 @@
 """
 TODO:
-    * make server broadcast moves on a thread
+    *
+
 """
 import pygame
 import socket
 import time
 from listener import Listener
-from client import Client, Player
+from client import Client
 from threading import Thread, Lock
 from misc import *
 
@@ -27,8 +28,8 @@ C4_PORT=4532
 """
 
 class Server(Listener):
-    def __init__(self, ip, port):
-        Listener.__init__(self, ip, port)
+    def __init__(self, ip, port, multiple_cons=True):
+        Listener.__init__(self, ip, port, multiple_cons)
         
         self.connected_clients = []
         self.recent_moves = []
@@ -69,7 +70,7 @@ class Server(Listener):
 
     def _broadcastThreadFun(self):
         """ 
-        Calls broadCastRecentMoves every 0.05 second
+        Calls broadcast function every 0.05 second
         """
         self.broadcastLock.acquire()
         doBC = self.do_broadcast
@@ -177,41 +178,5 @@ class Server(Listener):
         self.sendMsg(reply, from_ip, from_port)
 
 
-def test_server():
-    server = Server(IP,S_PORT)
-    client1 = Client(IP, C1_PORT, IP, S_PORT)
-    client2 = Client(IP, C2_PORT, IP, S_PORT)
-    client3 = Client(IP, C3_PORT, IP, S_PORT)
-    client4 = Client(IP, C4_PORT, IP, S_PORT)
-
-    server.listen()
-    client1.listen()
-    client2.listen()
-    client3.listen()
-    client4.listen()
-
-    client1.logIn("Client1")
-    client2.logIn("Client2")
-    client3.logIn("Client3")
-    client4.logIn("Client4")    
-    time.sleep(1)
-
-    server.startBroadcasting()
-    client1.player.make_move("Holla")
-    client2.player.make_move("Right")
-    client2.player.make_move("Right")
-    client3.player.make_move("left")
-    client4.player.make_move("go right now!")
-
-    time.sleep(1)
-
-    server.stopBroadcasting()
-
-    client1.kill()
-    client2.kill()
-    client3.kill()
-    client4.kill()
-    server.kill()
-
 if __name__ == "__main__":
-    test_server()
+    pass

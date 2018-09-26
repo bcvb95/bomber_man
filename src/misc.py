@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+import math
 
 def listToStringParser(lst, seperator=','):
     if len(lst) == 0:
@@ -18,3 +19,6 @@ def recentMovesToStringParser(recent_moves, seperator=','):
 def timeInMs():
     now = datetime.now()
     return (now.second*1000000) + now.microsecond
+
+def get_dist(p1,p2):
+    return math.hypot(p2[0] - p1[0], p2[1] - p1[1])
