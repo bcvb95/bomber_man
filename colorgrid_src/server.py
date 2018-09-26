@@ -71,7 +71,7 @@ class Server(PacketManager):
         while doBC:
             self.broadcastRecentMoves()
             # sleep before next broadcast
-            time.sleep(0.1)
+            time.sleep(0.01)
             self.broadcastLock.acquire()
             doBC = self.do_broadcast
             self.broadcastLock.release()
@@ -112,7 +112,9 @@ class Server(PacketManager):
         # add new moves
         self.rec_moves_lock.acquire()
         for move in stringToListParser(new_moves):
-            self.recent_moves.append((move, 0))
+            move_new_time = stringToListParser(move, ':')
+            move_new_time[2] = str(timeInMs())
+            self.recent_moves.append((listToStringParser(move_new_time, ':'), 0))
         splt_ack_moves = stringToListParser(ack_moves)
 
         # indexes for recent moves to remove
