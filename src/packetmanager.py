@@ -12,8 +12,6 @@ WORKER_THREADS = 8
 
 # TODO:
 # - Tests for this class
-# - Multiple cons does not need to be required (or exist)
-# - Unacknowledged packets must be dictionary
 
 # Changelog
 # - Interface changes:
@@ -133,6 +131,7 @@ class PacketManager(object):
             self.connection_seqs[addr_key] = seq + 1
 
             data = "%s-%d" % (data, seq)
+            # Unacknowledged packet: (data, seq, last_resend, addr)
             unack_pack = (data, "%d" % seq, time.time(), (ip, port))
             if addr_key in self.unacknowledged_packets:
                 self.unacknowledged_packets[addr_key].append(unack_pack)
@@ -248,9 +247,9 @@ class PacketManager(object):
             self.checkseq_mutex.release()
             return 0
         if addr_key in self.client_latest_seqs:
+            if len(self.client_latest_seqs[addr_key][1]) > 10:
+                self.client_latest_seqs[addr_key] = (self.client_latest_seqs[addr_key][0], self.client_latest_seqs[addr_key][1][-10:])
             missed_seq_list = self.client_latest_seqs[addr_key][1]
-            if len(missed_seq_list) > 10:
-                self.client_latest_seqs[addr_key] = (self.client_latest_seqs[addr_key][0], missed_seq_list[-10:])
             for i in range(len(missed_seq_list)):
                 missed_seq = missed_seq_list[i]
                 if missed_seq == seq:
@@ -297,18 +296,17 @@ class PacketManager(object):
         self.last_resend_check = now
         self.send_mutex.acquire()
         all_unack_packets = self.unacknowledged_packets
-        self.send_mutex.release()
         for addr_key in all_unack_packets:
             unack_packets = all_unack_packets[addr_key]
             for i in range(len(unack_packets)):
+                # Unacknowledged packet: (data, seq, last_resend, addr)
                 packet = unack_packets[i]
                 if now - packet[2] > RESEND_TIME:
                     if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
                     ip, port = packet[3]
                     self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
-                    self.send_mutex.acquire()
                     self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3])
-                    self.send_mutex.release()
+        self.send_mutex.release()
 
     def _listen_thread(self):
         """
