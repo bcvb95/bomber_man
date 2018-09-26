@@ -53,7 +53,7 @@ class Client(PacketManager):
                 self.receiveMsg(stalled_data, from_addr, force_handle)
                 return
             else:
-                self.stalled_packets[i] = (self.stalled_packets[0], self.stalled_packets[1], self.stalled_packets[2], stalled_packets[3] + 1)
+                self.stalled_packets[i] = (self.stalled_packets[i][0], self.stalled_packets[i][1], self.stalled_packets[i][2], stalled_packets[i][3] + 1)
 
 
     def handleNewMovesPacket(self, data):
