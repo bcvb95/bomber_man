@@ -54,12 +54,10 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                 
             if event.type == MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    print("MouseB pressed!") 
                     pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
                     move  = str(pressed_i)
                     player.make_move(move)
-
-            if keys[K_m]:
-                player.make_move("MOVE")
 
         player.colorgrid_lock.acquire()
         colorgrid.drawGrid(screen)
@@ -70,7 +68,6 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 class ColorGrid(object):
     def __init__(self, rect_size):
         self.rect_size = rect_size
-        range(0,SCR_WIDTH, 20)
         
         self.grid_rects = []
         for x in range(0, SCR_WIDTH, self.rect_size):
