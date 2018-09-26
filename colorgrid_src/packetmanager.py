@@ -7,11 +7,14 @@ from queue import Queue
 TIMEOUT = 0.1
 CHECK_RESEND_FREQ = 0.2
 RESEND_TIME = 0.5
+RESEND_AMOUNT_TOLERANCE = 5
 FRESHNESS_TOLERANCE = 5
 WORKER_THREADS = 8
 
 # TODO:
 # - Tests for this class
+
+# BUG IN RESENDER?
 
 # Changelog
 # - Interface changes:
@@ -35,7 +38,7 @@ class PacketManager(object):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # socket is non blocking
-        self.sock.setblocking(0)
+        self.sock.setblocking(1)
         self.sock.bind((self.ip, self.port))
 
         # listener thread
@@ -132,8 +135,8 @@ class PacketManager(object):
             self.connection_seqs[addr_key] = seq + 1
 
             data = "%s-%d" % (data, seq)
-            # Unacknowledged packet: (data, seq, last_resend, addr)
-            unack_pack = (data, "%d" % seq, time.time(), (ip, port))
+            # Unacknowledged packet: (data, seq, last_resend, addr, resend_count)
+            unack_pack = (data, "%d" % seq, time.time(), (ip, port), 0)
             if addr_key in self.unacknowledged_packets:
                 self.unacknowledged_packets[addr_key].append(unack_pack)
             else:
@@ -302,19 +305,24 @@ class PacketManager(object):
         now = time.time()
         self.last_resend_check = now
         self.send_mutex.acquire()
-        all_unack_packets = self.unacknowledged_packets
-        for addr_key in all_unack_packets:
-            unack_packets = all_unack_packets[addr_key]
-            for i in range(len(unack_packets)):
+        for addr_key in self.unacknowledged_packets:
+            i = 0
+            while i < len(self.unacknowledged_packets[addr_key]):
                 # Unacknowledged packet: (data, seq, last_resend, addr)
-                packet = unack_packets[i]
+                packet = self.unacknowledged_packets[addr_key][i]
                 if now - packet[2] > RESEND_TIME:
                     if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
                     ip, port = packet[3]
                     self.send_mutex.release()
                     self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
                     self.send_mutex.acquire()
-                    self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3])
+                    if packet[4] >= RESEND_AMOUNT_TOLERANCE:
+                        if self.verbose: self.log("discarding unacknowledged packet after resending %d times" % RESEND_AMOUNT_TOLERANCE)
+                        del self.unacknowledged_packets[addr_key][i]
+                        continue
+                    else:
+                        self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3], packet[4]+1)
+                i += 1
         self.send_mutex.release()
 
     def _listen_thread(self):
