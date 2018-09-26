@@ -14,8 +14,6 @@ WORKER_THREADS = 8
 # TODO:
 # - Tests for this class
 
-# BUG IN RESENDER?
-
 # Changelog
 # - Interface changes:
 #   * Subclasses should now call sendPacket when they want to send packets.
@@ -190,8 +188,12 @@ class PacketManager(object):
         ori_data = data
         # extract packet type, sequence number and data
         packet_type = data[0]
-        split_data = data.split('-')
-        data, seq = split_data[0], split_data[1]
+        try:
+            split_data = data.split('-')
+            data, seq = split_data[0], split_data[1]
+        except IndexError as err:
+            if self.verbose: self.log("ERROR - Invalid packet with data %s" % ori_data)
+            return
         # handle ack packets
         if packet_type == 'x':
             self._getPacketAck(seq, addr)
@@ -317,7 +319,7 @@ class PacketManager(object):
                     self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
                     self.send_mutex.acquire()
                     if packet[4] >= RESEND_AMOUNT_TOLERANCE:
-                        if self.verbose: self.log("discarding unacknowledged packet after resending %d times" % RESEND_AMOUNT_TOLERANCE)
+                        if self.verbose: self.log("discarding unacknowledged packet with seq %s after resending %d times" % (packet[1], RESEND_AMOUNT_TOLERANCE))
                         del self.unacknowledged_packets[addr_key][i]
                         continue
                     else:
