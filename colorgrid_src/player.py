@@ -3,6 +3,8 @@ from threading import Lock
 from client import Client
 from server import Server
 
+from colorgrid_consts import *
+
 class Player(object):
     def __init__(self,colorgrid,  ip, port, server_ip, server_port, is_server=False):
         self.id = 0
@@ -24,7 +26,7 @@ class Player(object):
 
     def make_move(self, move):
         self.colorgrid_lock.acquire()
-        self.new_moves.append("m%s:%s:%d" % (self.id, move, timeInMs()))
+        self.new_moves.append("m%s:%s:%d" % (self.client.player_number, move, timeInMs()))
         self.colorgrid_lock.release()
 
     def get_moves(self):
@@ -37,7 +39,10 @@ class Player(object):
     def do_move(self, move):
         self.colorgrid_lock.acquire()
         move_list = stringToListParser(move, ':')
-        print("\n\nMove by: player %s\nMove: %s\nTime: %s" % (move_list[0][1], move_list[1], move_list[2]))
+        col_i = int(move_list[0][1]) # who did the move?
+        rect_i = int(move_list[1])   # what rect to color
+        # color the rect!
+        self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i])
         self.colorgrid_lock.release()
 
     def print_players_online(self):

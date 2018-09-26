@@ -43,18 +43,20 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
         for event in pygame.event.get():
             keys = pygame.key.get_pressed()
-
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
             if event.type == QUIT or keys[K_ESCAPE]:
-                player.server.stopBroadcasting()
+                if player.is_server:
+                    player.server.stopBroadcasting()
                 player.kill()
                 player.logfile.close()
                 sys.exit()
                 
             if event.type == MOUSEBUTTONDOWN:
-               if event.button == 1:
-                   colorgrid.colorTileClick(mouse_x, mouse_y, CLIENT_COLORS[player.client.player_number])
+                if event.button == 1:
+                    pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
+                    move  = str(pressed_i)
+                    player.make_move(move)
 
             if keys[K_m]:
                 player.make_move("MOVE")
@@ -63,7 +65,6 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         colorgrid.drawGrid(screen)
         player.colorgrid_lock.release()
 
-        clock.tick(10)
         pygame.display.flip()
 
 class ColorGrid(object):
@@ -88,7 +89,14 @@ class ColorGrid(object):
                 pygame.draw.rect(screen, rect[0], rect[1])
             # else if color grid
 
-    def colorTileClick(self ,x ,y , color):
+
+    def colorRect(self, index, color):
+        if self.grid_rects[index][0] == None:
+            self.grid_rects[index] = (color, self.grid_rects[index][1])  
+        else:
+            self.grid_rects[index] = (None, self.grid_rects[index][1])
+
+    def getRectIndexFromClick(self ,x ,y):
         # find tile closest to mousepress
         min_dist = 9999999
         min_i = 0
@@ -100,5 +108,5 @@ class ColorGrid(object):
                 min_dist = dist
                 min_i = i
 
-        # color the tile on index min_i
-        self.grid_rects[min_i] = (color, self.grid_rects[min_i][1])
+        # return the index of the rext to be colored
+        return min_i
