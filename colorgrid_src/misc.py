@@ -9,7 +9,7 @@ import netifaces as ni
 def listToStringParser(lst, seperator=','):
     if len(lst) == 0:
         return ""
-    return ("%s" % seperator).join(lst) 
+    return ("%s" % seperator).join(lst)
 
 def stringToListParser(string, seperator=','):
     if len(string) == 0:
@@ -21,8 +21,7 @@ def recentMovesToStringParser(recent_moves, seperator=','):
     return ("%s" % seperator).join(moves)
 
 def timeInMs():
-    now = datetime.now()
-    return (now.second*1000000) + now.microsecond
+    return int(time.time() * 1000)
 
 def get_dist(p1,p2):
     return math.hypot(p2[0] - p1[0], p2[1] - p1[1])
