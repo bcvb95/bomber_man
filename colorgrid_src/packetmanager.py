@@ -121,6 +121,7 @@ class PacketManager(object):
         seq = int(arg_seq)
         if seq != -1:
             data = "%s-%d" % (data, seq)
+            self.send_mutex.acquire()
         elif not ack:
             addr_key = "%s%s" % (ip, port)
             self.send_mutex.acquire()
@@ -137,9 +138,10 @@ class PacketManager(object):
                 self.unacknowledged_packets[addr_key].append(unack_pack)
             else:
                 self.unacknowledged_packets[addr_key] = [unack_pack]
-            self.send_mutex.release()
         if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
         self.sock.sendto(data.encode(), (ip, port))
+        if not ack:
+            self.send_mutex.release()
 
     def receiveMsg(self, data, addr):
         """

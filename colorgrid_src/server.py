@@ -71,7 +71,7 @@ class Server(PacketManager):
         while doBC:
             self.broadcastRecentMoves()
             # sleep before next broadcast
-            time.sleep(0.01)
+            time.sleep(0.05)
             self.broadcastLock.acquire()
             doBC = self.do_broadcast
             self.broadcastLock.release()
