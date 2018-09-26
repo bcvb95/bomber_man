@@ -20,7 +20,7 @@ from misc import *
 """
 
 class Server(PacketManager):
-    def __init__(self, ip, port, multiple_cons=True):
+    def __init__(self, ip, port):
         PacketManager.__init__(self, ip, port, multiple_cons)
 
         self.connected_clients = []

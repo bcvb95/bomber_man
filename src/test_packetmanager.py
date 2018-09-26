@@ -3,16 +3,16 @@ import datetime
 from packetmanager import PacketManager
 
 class TestServer(PacketManager):
-    def __init__(self, ip, port, multiple_cons=True, name="Server", logfile=None):
-        PacketManager.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
+    def __init__(self, ip, port, name="Server", logfile=None):
+        PacketManager.__init__(self, ip, port, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Server received: %s" % msg)
 
 
 class TestClient(PacketManager):
-    def __init__(self, ip, port, multiple_cons=False, name="Client", logfile=None):
-        PacketManager.__init__(self, ip, port, multiple_cons, name=name, verbose=True, logfile=logfile)
+    def __init__(self, ip, port, name="Client", logfile=None):
+        PacketManager.__init__(self, ip, port, name=name, verbose=True, logfile=logfile)
 
     def receiveMsg(self, msg, addr):
         print("Client received: %s" % msg)

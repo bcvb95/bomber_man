@@ -8,25 +8,26 @@ TIMEOUT = 0.1
 CHECK_RESEND_FREQ = 0.2
 RESEND_TIME = 0.5
 FRESHNESS_TOLERANCE = 5
+WORKER_THREADS = 8
 
 # TODO:
 # - Tests for this class
+# - Multiple cons does not need to be required (or exist)
+# - Unacknowledged packets must be dictionary
 
 # Changelog
 # - Interface changes:
-#   * Constructor now requires arg 'multiple_cons'.
-#     - Should be True if multiple connections will be made to this object
-#     - Defaults to False which means only one other peer should be used
 #   * Subclasses should now call sendPacket when they want to send packets.
 #   * The packet manager can have a custom name for debugging
 #   * Verbose mode - Get a lot of output
 #   * Log file - If you specify a logfile output is redirected there.
+#   * No longer requires 'multiple_cons' arg
 # - Backend changes:
 #   * Resend packets that are not acknowledged after some time
 #   * Don't accept packets that have been seen before by checking sequence numbers
 
 class PacketManager(object):
-    def __init__(self, ip, port, multiple_cons, name="packetManager", verbose=False, logfile=None):
+    def __init__(self, ip, port, name="packetManager", verbose=False, logfile=None):
         # debug
         self.name = name
         self.verbose = verbose
@@ -35,37 +36,50 @@ class PacketManager(object):
         self.ip = ip
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # socket is non blocking
         self.sock.setblocking(0)
         self.sock.bind((self.ip, self.port))
 
-        # packet resending
-        self.multiple_cons = multiple_cons
-        if self.multiple_cons:
-            self.connection_seqs = {}
-        else:
-            self.seq = 0
-        self.unacknowledged_packets = []
-        self.last_resend_check = time.time()
-        self.client_latest_seqs = {}
-        self.resend_mutex = Lock()
-
         # listener thread
+        # the listen thread is stored here
         self.listen_thread = None
-        self.listener_lock = Lock()
+        # flag for killing the listener
         self.kill_listen = False
+        # mutex to be able to access kill_listen flag
+        self.listener_lock = Lock()
+
+        # packet monitoring
+        # table of sequence numbers of each connection, used when sending
+        self.connection_seqs = {}
+        # table of unacknowledged packet lists for each connection, used to resend packets
+        self.unacknowledged_packets = {}
+        # when was the last resend check?
+        self.last_resend_check = time.time()
+        # mutex to use for accessing above tables
+        self.send_mutex = Lock()
+        # table of latest sequence numbers received from client, used when receiving to not handle a packet that has been handled before
+        self.client_latest_seqs = {}
+        # mutex for checking sequence numbers (and using above table)
+        self.checkseq_mutex = Lock()
 
         # thread pool
+        # a Queue object for storing new packets
         self.job_queue = Queue(maxsize=0) # maxsize = 0 = inf
+        # flag for killing pool
+        self.kill_pool = False
+        # mutex and cond object for managing queue
         self.pool_lock = Lock()
         self.pool_cond = Condition(self.pool_lock)
-        self.numthreads = 8
-        self.kill_pool = False
-        for i in range(self.numthreads):
+        # initialize worker threads
+        for i in range(WORKER_THREADS):
             worker = Thread(target=self._receiveMsg)
             worker.setDaemon(True) # exit when main thread exits
             worker.start()
 
     def log(self, msg):
+        """
+        Logs message to logfile if it exists, else it prints to stdout.
+        """
         msg = "%s: %s" % (self.name, msg)
         if self.logfile:
             self.logfile.write(msg + "\n")
@@ -99,25 +113,32 @@ class PacketManager(object):
         self.listen_thread.join()
 
     def sendPacket(self, data, ip, port, ack=False, arg_seq=-1):
+        """
+        Should always be used to send packets.
+        Don't override this function, instead call it in the end of your own send function.
+        --------------------------------------------------------------------------------------------
+        Sends packets with sequence numbers according to the address it is being sent to.
+        Also logs sent packets so they can be resend later if they are not acknowledged in between.
+        """
         seq = int(arg_seq)
         if seq != -1:
             data = "%s-%d" % (data, seq)
         elif not ack:
-            if self.multiple_cons:
-                addr_key = "%s%s" % (ip, port)
-                if addr_key in self.connection_seqs:
-                    seq = self.connection_seqs[addr_key]
-                else:
-                    seq = 0
-                self.connection_seqs[addr_key] = seq + 1
+            addr_key = "%s%s" % (ip, port)
+            self.send_mutex.acquire()
+            if addr_key in self.connection_seqs:
+                seq = self.connection_seqs[addr_key]
             else:
-                seq = self.seq
-                self.seq += 1
+                seq = 0
+            self.connection_seqs[addr_key] = seq + 1
 
             data = "%s-%d" % (data, seq)
-            self.resend_mutex.acquire()
-            self.unacknowledged_packets.append((data, "%d" % seq, time.time(), (ip, port)))
-            self.resend_mutex.release()
+            unack_pack = (data, "%d" % seq, time.time(), (ip, port))
+            if addr_key in self.unacknowledged_packets:
+                self.unacknowledged_packets[addr_key].append(unack_pack)
+            else:
+                self.unacknowledged_packets[addr_key] = [unack_pack]
+            self.send_mutex.release()
         if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
         self.sock.sendto(data.encode(), (ip, port))
 
@@ -146,6 +167,22 @@ class PacketManager(object):
             self._handlePacket(data, addr, job_freshness)
 
     def _handlePacket(self, data, addr, freshness):
+        """
+        Used by worker threads to handle a packet.
+        The data is used to call self.receiveMsg (which can be overwritten to use the data for what you like)
+        ----------------------------------------------------------------------
+        If the packet is an ack packet (prefixed by 'x') the data will not be used for a call to self.receiveMsg.
+        Instead it will silently receive the ack and remove the newly acknowledged packet.
+
+        If the packet is not an ack packet the function either accepts or rejects the new packet.
+        - If the packet is accepted the data (without sequence number) is used as argument to self.receiveMsg.
+        - If the packet is rejected it is put back on the job queue, with a higher freshness value.
+
+        If the packet has a freshness of 1 it is a new packet (only been one the job queue once).
+        In this case we send an ack packet back to the sender.
+
+        Packets are accepted if they pass the checks in _checkSeq.
+        """
         ori_data = data
         # extract packet type, sequence number and data
         packet_type = data[0]
@@ -153,7 +190,7 @@ class PacketManager(object):
         data, seq = split_data[0], split_data[1]
         # handle ack packets
         if packet_type == 'x':
-            self._getPacketAck(seq)
+            self._getPacketAck(seq, addr)
             return
         # handle other packets
         if freshness == 0:
@@ -194,17 +231,21 @@ class PacketManager(object):
         """
         addr_key = "%s%s" % (addr[0], addr[1])
         seq = int(seq)
+        self.checkseq_mutex.acquire()
         if addr_key not in self.client_latest_seqs: # New client
             self.client_latest_seqs[addr_key] = (seq, list(range(0, seq)))
             if self.verbose: self.log("accepted packet with seq %d because it was from a new client." % seq)
+            self.checkseq_mutex.release()
             return 0
         if freshness > FRESHNESS_TOLERANCE:
             self.client_latest_seqs[addr_key] = (seq, self.client_latest_seqs[addr_key][1] + list(range(self.client_latest_seqs[addr_key][0], seq)))
             if self.verbose: self.log("accepted packet with seq %d because its freshness was above tolerance." % seq)
+            self.checkseq_mutex.release()
             return 0
         if self.client_latest_seqs[addr_key][0] == seq-1:
             self.client_latest_seqs[addr_key] = (seq, self.client_latest_seqs[addr_key][1])
             if self.verbose: self.log("accepted packet with seq %d because it was in correct sequence." % seq)
+            self.checkseq_mutex.release()
             return 0
         if addr_key in self.client_latest_seqs:
             missed_seq_list = self.client_latest_seqs[addr_key][1]
@@ -215,8 +256,10 @@ class PacketManager(object):
                 if missed_seq == seq:
                     if self.verbose: self.log("accepted packet with seq %d because it was a missing sequence number." % seq)
                     del self.client_latest_seqs[addr_key][1][i]
+                    self.checkseq_mutex.release()
                     return 0
         if self.verbose: self.log("rejected packet with seq %d because it was in wrong sequence. expected seq %d from (%s,%s)" % (seq, self.client_latest_seqs[addr_key][0], addr[0], addr[1]))
+        self.checkseq_mutex.release()
         return 1
 
     def _sendPacketAck(self, seq, ip, port):
@@ -227,29 +270,45 @@ class PacketManager(object):
         if self.verbose: self.log("sends packet ack for pack with seq %s" % seq)
         self.sendPacket("x-%s" % seq, ip, port, ack=True)
 
-    def _getPacketAck(self, seq):
-        self.resend_mutex.acquire()
-        for i in range(len(self.unacknowledged_packets)):
-            if self.unacknowledged_packets[i][1] == seq:
+    def _getPacketAck(self, seq, addr):
+        """
+        Get ack for package.
+        Looks through unaccepted packages sent to that address and removes the package that was acknowledged.
+        """
+        addr_key = "%s%s" % (addr[0], addr[1])
+        self.send_mutex.acquire()
+        unack_packets = self.unacknowledged_packets[addr_key]
+        self.send_mutex.release()
+        for i in range(len(unack_packets)):
+            if unack_packets[i][1] == seq:
                 if self.verbose: self.log("got packet ack for pack with seq %s" % seq)
-                del self.unacknowledged_packets[i]
-                self.resend_mutex.release()
+                self.send_mutex.acquire()
+                del self.unacknowledged_packets[addr_key][i]
+                self.send_mutex.release()
                 return
         if self.verbose: self.log("got packet ack for already acknowledged packet with seq %s" % seq)
-        self.resend_mutex.release()
 
     def _check_resend(self):
+        """
+        Checks all unacknowledged packets sent to all peers.
+        Resends packet if it has not been acknowledged after RESEND_TIME.
+        """
         now = time.time()
         self.last_resend_check = now
-        self.resend_mutex.acquire()
-        for i in range(len(self.unacknowledged_packets)):
-            packet = self.unacknowledged_packets[i]
-            if now - packet[2] > RESEND_TIME:
-                if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
-                ip, port = packet[3]
-                self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
-                self.unacknowledged_packets[i] = (packet[0], packet[1], now, packet[3])
-        self.resend_mutex.release()
+        self.send_mutex.acquire()
+        all_unack_packets = self.unacknowledged_packets
+        self.send_mutex.release()
+        for addr_key in all_unack_packets:
+            unack_packets = all_unack_packets[addr_key]
+            for i in range(len(unack_packets)):
+                packet = unack_packets[i]
+                if now - packet[2] > RESEND_TIME:
+                    if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
+                    ip, port = packet[3]
+                    self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
+                    self.send_mutex.acquire()
+                    self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3])
+                    self.send_mutex.release()
 
     def _listen_thread(self):
         """
@@ -262,6 +321,7 @@ class PacketManager(object):
             self.listener_lock.acquire()
             if self.kill_listen:
                 return # return if listener is being killed
+            self.listener_lock.release()
             now = time.time()
             if now - self.last_resend_check > CHECK_RESEND_FREQ:
                 self._check_resend()
@@ -272,12 +332,11 @@ class PacketManager(object):
                 self.job_queue.put((data.decode(), addr, 0)) # add packet to job queue
                 self.pool_cond.notify_all() # notify workers
                 self.pool_cond.release()
-            self.listener_lock.release()
 
     def _kill_pool(self):
         """
         Private method - should not be called from outside the class.
-        Kills the job queue
+        Kills the job queue.
         """
         if self.verbose: self.log("killing worker pool.")
         self.pool_cond.acquire()
