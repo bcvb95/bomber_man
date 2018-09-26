@@ -8,6 +8,7 @@ from server import Server
 from client import Client 
 from player import Player
 
+MOVE_CD = 0.05
 
 """
     Server  |    ip: 127.0.0.1, port: 8909
@@ -19,8 +20,13 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     pygame.init()
     clock = pygame.time.Clock()
 
+    mouse_down = False
+    last_mouse_keys = []
+    last_cd = time.time()
+    
+
     screen = pygame.display.set_mode(SCR_SIZE) 
-    colorgrid = ColorGrid(10)
+    colorgrid = ColorGrid(20)
 
     client_ip = getMyIP()
 
@@ -37,6 +43,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     while not player.client.logged_in:
         player.client.logIn(username)
         time.sleep(0.1)
+    
 
     while True:
         screen.fill(WHITE)
@@ -51,13 +58,31 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                 player.kill()
                 player.logfile.close()
                 sys.exit()
-                
+
             if event.type == MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    print("MouseB pressed!") 
-                    pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
-                    move  = str(pressed_i)
-                    player.make_move(move)
+                mouse_down = True
+                last_mouse_keys = pygame.mouse.get_pressed()
+            if event.type == MOUSEBUTTONUP:
+                mouse_down = False
+
+            if mouse_down:
+                pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
+                move  = str(pressed_i)
+
+                if last_mouse_keys[0]:
+                    move += '/l'
+                    if (time.time() - last_cd) > MOVE_CD:
+                        player.make_move(move)
+                        last_cd = time.time()
+
+                if last_mouse_keys[2]:
+                    move += '/r'
+                    if (time.time() - last_cd) > MOVE_CD:
+                        player.make_move(move)
+                        last_cd = time.time()
+
+            if event.type == MOUSEBUTTONUP:
+                mouse_down = False
 
         player.colorgrid_lock.acquire()
         colorgrid.drawGrid(screen)
@@ -88,10 +113,7 @@ class ColorGrid(object):
 
 
     def colorRect(self, index, color):
-        if self.grid_rects[index][0] == None:
-            self.grid_rects[index] = (color, self.grid_rects[index][1])  
-        else:
-            self.grid_rects[index] = (None, self.grid_rects[index][1])
+        self.grid_rects[index] = (color, self.grid_rects[index][1])  
 
     def getRectIndexFromClick(self ,x ,y):
         # find tile closest to mousepress

@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 
-SCR_SIZE = SCR_WIDTH, SCR_HEIGHT = 500, 500 
+SCR_SIZE = SCR_WIDTH, SCR_HEIGHT = 700, 700 
 
 BLACK = Color(0,0,0,1)
 WHITE = Color(255,255,255,1)
