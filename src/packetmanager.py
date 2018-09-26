@@ -260,7 +260,7 @@ class PacketManager(object):
                 self.checkseq_mutex.release()
                 return 0
         if seq < self.client_latest_seqs[addr_key][0]:
-            if self.verbose: self.log("rejected packet with seq %d because it was below stored seq and not missing." % seq)
+            if self.verbose: self.log("rejected packet with seq %d because it was below stored seq (%d) and not missing." % (seq, self.client_latest_seqs[addr_key][0]))
             self.checkseq_mutex.release()
             return 2
         if self.verbose: self.log("rejected packet with seq %d because it was in wrong sequence. expected seq %d from (%s,%s)" % (seq, self.client_latest_seqs[addr_key][0], addr[0], addr[1]))
@@ -283,15 +283,14 @@ class PacketManager(object):
         addr_key = "%s%s" % (addr[0], addr[1])
         self.send_mutex.acquire()
         unack_packets = self.unacknowledged_packets[addr_key]
-        self.send_mutex.release()
         for i in range(len(unack_packets)):
             if unack_packets[i][1] == seq:
                 if self.verbose: self.log("got packet ack for pack with seq %s" % seq)
-                self.send_mutex.acquire()
                 del self.unacknowledged_packets[addr_key][i]
                 self.send_mutex.release()
                 return
         if self.verbose: self.log("got packet ack for already acknowledged packet with seq %s" % seq)
+        self.send_mutex.release()
 
     def _check_resend(self):
         """
