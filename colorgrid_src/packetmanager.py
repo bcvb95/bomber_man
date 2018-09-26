@@ -311,7 +311,9 @@ class PacketManager(object):
                 if now - packet[2] > RESEND_TIME:
                     if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
                     ip, port = packet[3]
+                    self.send_mutex.release()
                     self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
+                    self.send_mutex.acquire()
                     self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3])
         self.send_mutex.release()
 

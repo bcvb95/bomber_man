@@ -9,7 +9,7 @@ class Player(object):
     def __init__(self,colorgrid,  ip, port, server_ip, server_port, is_server=False):
         self.id = 0
         self.new_moves = []
-        
+
         self.server = None
         self.is_server = is_server
 
@@ -31,6 +31,7 @@ class Player(object):
 
     def get_moves(self):
         self.colorgrid_lock.acquire()
+        if self.client.verbose: self.client.log("returning moves")
         moves = self.new_moves
         self.new_moves = []
         self.colorgrid_lock.release()
@@ -42,7 +43,7 @@ class Player(object):
         col_i = int(move_list[0][1]) # who did the move?
         rect_i = int(move_list[1])   # what rect to color
         # color the rect!
-        self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i])
+        self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i-1])
         self.colorgrid_lock.release()
 
     def print_players_online(self):
