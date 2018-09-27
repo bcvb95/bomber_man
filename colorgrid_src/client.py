@@ -44,8 +44,10 @@ class Client(PacketManager):
 
         if msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
-
+        if forced:
+            return
         for i in range(len(self.stalled_packets)):
+            if self.verbose: self.log("stalling packet")
             force_handle = self.stalled_packets[i][3] >= STALLED_TOLERANCE
             if self.stalled_packets[i][2] == self.server_seq+1 or force_handle:
                 stalled_data, from_addr = self.stalled_packets[i][0], self.stalled_packets[i][1]
