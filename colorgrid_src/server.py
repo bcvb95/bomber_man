@@ -159,7 +159,7 @@ class Server(PacketManager):
                 if ack == rec_move: # if client acks a recent move
                     self.recent_moves[j] = (rec_move, self.recent_moves[j][1] + 1)
                 # if all clients have ackknowledged the move
-                if self.recent_moves[j][1] == self.num_clients:
+                if self.recent_moves[j][1] >= self.num_clients:
                     if j not in pop_i:
                         pop_i.append(j)
 

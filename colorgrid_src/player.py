@@ -19,11 +19,13 @@ class Player(object):
 
         self.colorgrid = colorgrid
         self.colorgrid_lock = Lock()
+        self.selected_color = 0
         self.client = Client(ip, port, server_ip, server_port, self, logfile=self.logfile, verbose=True)
         self.client.listen()
 
     def make_move(self, move):
         self.colorgrid_lock.acquire()
+        move = "%s/%d" % (move, self.selected_color)
         self.new_moves.append("m%s:%s:%d" % (self.client.player_number, move, timeInMs()))
         self.colorgrid_lock.release()
 
@@ -38,13 +40,16 @@ class Player(object):
     def do_move(self, move):
         self.colorgrid_lock.acquire()
         move_list = stringToListParser(move, ':')
-        col_i = int(move_list[0][1]) # who did the move?
-        rect_i = int(move_list[1][0:-2])   # what rect to color
-        delete = (move_list[1][-1] == 'r')
-
+        move_info = move_list[1].split('/')
+        rect_i = int(move_info[0]) # what rect to color
+        delete = move_info[1] == 'r' # erase color?
+        try:
+            color = CLIENT_COLORS[int(move_info[2])]
+        except:
+            color = BLACK
         # color the rect!
         if not delete:
-            self.colorgrid.colorRect(rect_i, CLIENT_COLORS[col_i-1])
+            self.colorgrid.colorRect(rect_i, color)
         else:
             self.colorgrid.colorRect(rect_i, None)
         self.colorgrid_lock.release()

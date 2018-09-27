@@ -48,22 +48,26 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         screen.fill(WHITE)
 
         for event in pygame.event.get():
-            keys = pygame.key.get_pressed()
+            #keys = pygame.key.get_pressed()
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-            if event.type == QUIT or keys[K_ESCAPE]:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == K_ESCAPE):
                 if player.is_server:
                     player.server.stopBroadcasting()
                 player.kill()
                 player.logfile.close()
                 sys.exit()
 
-            if event.type == MOUSEBUTTONDOWN and not mouse_down:
+            elif event.type == MOUSEBUTTONDOWN and not mouse_down:
                 mouse_down = True
                 last_mouse_keys = pygame.mouse.get_pressed()
-            if event.type == MOUSEBUTTONUP:
+            elif event.type == MOUSEBUTTONUP:
                 mouse_down = False
 
+            if event.type == pygame.KEYDOWN:
+                num_key = event.key-48
+                if num_key > 0 and num_key < 10:
+                    player.selected_color = num_key-1
 
         if mouse_down:
             pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)

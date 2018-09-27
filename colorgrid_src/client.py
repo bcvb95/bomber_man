@@ -92,6 +92,7 @@ class Client(PacketManager):
                     self.logged_in = True
                     self.username = parsed_login[1]
                     self.player_number = int(parsed_login[2])
+                    self.player.selected_color = self.player_number-1
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
 
     def unstableConnection(self, addr):
