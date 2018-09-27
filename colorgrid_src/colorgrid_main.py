@@ -68,8 +68,6 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         if mouse_down:
             pressed_i = colorgrid.getRectIndexFromClick(mouse_x, mouse_y)
             move  = str(pressed_i)
-            if player.server:
-                print(len(player.server.recent_moves))
             if last_mouse_keys[0]:
                 move += '/l'
                 if (time.time() - last_cd) > MOVE_CD:

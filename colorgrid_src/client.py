@@ -94,5 +94,8 @@ class Client(PacketManager):
                     self.player_number = int(parsed_login[2])
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
 
+    def unstableConnection(self, addr):
+        print("%s: has unstable connection with server" % self.name)
+
 if __name__ == "__main__":
     pass

@@ -11,6 +11,7 @@ RESEND_AMOUNT_TOLERANCE = 5
 FRESHNESS_TOLERANCE = 5
 WORKER_THREADS = 8
 MAX_PACK_SIZE = 4096
+STABLE_CON_TOLERANCE = 5
 
 # TODO:
 # - Tests for this class
@@ -61,6 +62,9 @@ class PacketManager(object):
         self.client_latest_seqs = {}
         # mutex for checking sequence numbers (and using above table)
         self.checkseq_mutex = Lock()
+        # connection stability dict
+        self.stable_cons = {}
+        self.stable_mutex = Lock()
 
         # thread pool
         # a Queue object for storing new packets
@@ -151,9 +155,17 @@ class PacketManager(object):
 
     def receiveMsg(self, data, addr):
         """
-        Public method - should be overwritten.
+        Public method - should be overwritten to handle received packets.
+        Called when a new packet has been received and passed checks.
         """
         print("received: %s from %s" % (data, addr))
+
+    def unstableConnection(self, addr):
+        """
+        Public method - should be overwritten to handle unstable/lost connections.
+        Called when a packet has been discarded STABLE_TOLERANCE times.
+        """
+        print("unstable connection with address: %s:%s" % (addr[0], addr[1]))
 
     def _receiveMsg(self):
         """
@@ -293,6 +305,9 @@ class PacketManager(object):
         Looks through unaccepted packages sent to that address and removes the package that was acknowledged.
         """
         addr_key = "%s%s" % (addr[0], addr[1])
+        self.stable_mutex.acquire()
+        self.stable_cons[addr_key] = 0
+        self.stable_mutex.release()
         self.send_mutex.acquire()
         unack_packets = self.unacknowledged_packets[addr_key]
         for i in range(len(unack_packets)):
@@ -326,11 +341,34 @@ class PacketManager(object):
                     if packet[4] >= RESEND_AMOUNT_TOLERANCE:
                         if self.verbose: self.log("discarding unacknowledged packet with seq %s after resending %d times" % (packet[1], RESEND_AMOUNT_TOLERANCE))
                         del self.unacknowledged_packets[addr_key][i]
+                        self.stable_mutex.acquire()
+                        if addr_key not in self.stable_cons:
+                            self.stable_cons[addr_key] = 0
+                        self.stable_cons[addr_key] += 1
+                        if self.stable_cons[addr_key] >= STABLE_CON_TOLERANCE:
+                            self._unstableConnection((ip, port))
+                            self.stable_mutex.release()
+                            break
+                        self.stable_mutex.release()
                         continue
                     else:
                         self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3], packet[4]+1)
                 i += 1
         self.send_mutex.release()
+
+    def _unstableConnection(self, addr):
+        if self.verbose: self.log("has unstable connection with address: %s:%s" % (addr[0], addr[1]))
+        addr_key = "%s%s" % (addr[0], addr[1])
+        self.checkseq_mutex.acquire()
+        del self.client_latest_seqs[addr_key]
+        self.checkseq_mutex.release()
+        # already have send mutex
+        self.unacknowledged_packets[addr_key] = []
+        del self.connection_seqs[addr_key]
+        # already have stable mutex
+        del self.stable_cons[addr_key]
+        self.unstableConnection(addr)
+
 
     def _listen_thread(self):
         """

@@ -19,11 +19,14 @@ from misc import *
         'a' - client sending new moves and ack moves
 """
 
+MAX_CLIENTS = 4
+
 class Server(PacketManager):
     def __init__(self, ip, port, name="Server", logfile=None, verbose=False):
         PacketManager.__init__(self, ip, port,name=name, logfile=logfile, verbose=verbose)
 
         self.connected_clients = []
+        self.num_clients = 0
         self.recent_moves = []
 
         self.rec_moves_lock = Lock()
@@ -33,21 +36,24 @@ class Server(PacketManager):
         self.broadcastLock = Lock()
 
         self.con_seqs = {}
+        self.con_seqs_lock = Lock()
 
     def sendMsg(self, msg, to_ip, to_port):
         """ Send a packet """
         addr_key = "%s%s" % (to_ip, to_port)
+        self.con_seqs_lock.acquire()
         if addr_key in self.con_seqs:
             seq = self.con_seqs[addr_key]
             self.con_seqs[addr_key] += 1
         else:
             seq = 0
             self.con_seqs[addr_key] = seq
+        self.con_seqs_lock.release()
         msg = "%s>%d" % (msg, seq)
         self.sendPacket(msg, to_ip, to_port)
 
     def receiveMsg(self, data, from_addr):
-        """ Overrides the listers receiveMsg, and handles incomming data for the server"""
+        """ Overrides the PacketManager receiveMsg, and handles incomming data for the server"""
         msg_type, data = data[0], data[1:]
 
         if msg_type == 'l': # client login
@@ -55,6 +61,23 @@ class Server(PacketManager):
 
         if msg_type == 'a': # client sending new moves and ack-moves
             self.handleClientMovesAndAcks(data)
+
+    def unstableConnection(self, addr):
+        """ Overrides the PacketManager unstableConnection.
+            Handles an unstable connection as a lost connection """
+        addr_key = "%s%s" % (addr[0], addr[1])
+        self.con_seqs_lock.acquire()
+        self.con_seqs[addr_key] = 0
+        self.con_seqs_lock.release()
+        target_ip, target_port = addr
+        for i in range(len(self.connected_clients)):
+            tmp_client = self.connected_clients[i]
+            if not tmp_client: continue
+            if target_ip == tmp_client[1] and target_port == tmp_client[2]:
+                self.connected_clients[i] = None
+                self.num_clients -= 1
+                print("Removing unstable client")
+                return
 
     def startBroadcasting(self):
         """ Starts the broadcasting thread """
@@ -92,10 +115,10 @@ class Server(PacketManager):
         """
         self.conn_clients_lock.acquire()
         self.rec_moves_lock.acquire()
-        num_clients = len(self.connected_clients)
         num_recent_moves = len(self.recent_moves)
 
-        for i in range(num_clients):
+        for i in range(len(self.connected_clients)):
+            if not self.connected_clients[i]: continue
             c_uname, c_ip, c_port = self.connected_clients[i]
             b_msg = "m"
             # if recent moves to send
@@ -136,9 +159,8 @@ class Server(PacketManager):
                 if ack == rec_move: # if client acks a recent move
                     self.recent_moves[j] = (rec_move, self.recent_moves[j][1] + 1)
                 # if all clients have ackknowledged the move
-                if self.recent_moves[j][1] == len(self.connected_clients):
+                if self.recent_moves[j][1] == self.num_clients:
                     if j not in pop_i:
-                        print("acked: %s, with %d number of acks" % (ack, self.recent_moves[j][1]))
                         pop_i.append(j)
 
         # remove completely acked moves
@@ -165,6 +187,7 @@ class Server(PacketManager):
         do_login = True
         self.conn_clients_lock.acquire()
         for user in self.connected_clients:
+            if not user: continue
             already_in = (user[1] == from_ip and user[2] == from_port)
             if already_in:
                 do_login = False
@@ -172,10 +195,21 @@ class Server(PacketManager):
                 break
         if do_login:
             new_usr = (username, from_ip, from_port)
-            self.connected_clients.append(new_usr)
-            num_usr = len(self.connected_clients)
-            # send login status followed by username and player-number
-            reply = "llogin_success,%s,%d" % (username, num_usr)
+            new_id = -1
+            for i in range(len(self.connected_clients)):
+                if self.connected_clients[i]: continue # continue if not free spot
+                self.connected_clients[i] = new_usr
+                new_id = i+1
+                break
+            if new_id == -1 and len(self.connected_clients) < MAX_CLIENTS:
+                self.connected_clients.append(new_usr)
+                new_id = len(self.connected_clients)
+            if new_id != -1:
+                # send login status followed by username and player-number
+                self.num_clients += 1
+                reply = "llogin_success,%s,%d" % (username, new_id)
+            else:
+                reply = "llogin_failed"
         self.conn_clients_lock.release()
 
         # send login-response to client
