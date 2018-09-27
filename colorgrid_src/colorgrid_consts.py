@@ -16,4 +16,4 @@ col3 = Color(9, 163, 140)
 col4 = Color(245, 144, 14)
 col5 = Color(241, 76, 19)
 
-CLIENT_COLORS = [col1, col2, col3, col4, col5]
+CLIENT_COLORS = [col1, col2, col3, col4, col5, RED, GREEN, BLUE, BLACK]
