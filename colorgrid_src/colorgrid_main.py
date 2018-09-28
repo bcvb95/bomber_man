@@ -26,23 +26,21 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
 
     screen = pygame.display.set_mode(SCR_SIZE)
-    colorgrid = ColorGrid(10)
+    colorgrid = ColorGrid(100)
 
     client_ip = getMyIP()
 
     player = None
 
     if is_server: # if player is a server
-        player = Player(colorgrid,client_ip, client_port, client_ip, server_port, is_server)
-        time.sleep(1)
+        player = Player(username, colorgrid,client_ip, client_port, client_ip, server_port, is_server)
         player.server.startBroadcasting()
     else:         # if the player is not a server
-        player = Player(colorgrid, client_ip, client_port, server_ip, server_port )
+        player = Player(username, colorgrid, client_ip, client_port, server_ip, server_port )
 
     # log in
-    while not player.client.logged_in:
-        player.client.logIn(username)
-        time.sleep(0.1)
+    if not player.is_server:
+        player.client.logIn()
 
     while True:
         screen.fill(WHITE)
@@ -97,17 +95,22 @@ class ColorGrid(object):
         for x in range(0, SCR_WIDTH, self.rect_size):
             for y in range(0, SCR_HEIGHT, self.rect_size):
                 rect = Rect(x,y, self.rect_size, self.rect_size)
-                filled_rect = (None, rect)
+                filled_rect = (-1, rect)
                 self.grid_rects.append(filled_rect)
 
 
     def drawGrid(self, screen):
         for i in range(len(self.grid_rects)):
             rect = self.grid_rects[i]
-            if rect[0] == None:
+            if rect[0] == -1:
                 pygame.draw.rect(screen, BLACK, rect[1], 1)
             else:
-                pygame.draw.rect(screen, rect[0], rect[1])
+                try:
+                    color = CLIENT_COLORS[rect[0]]
+                except:
+                    color = BLACK
+                pygame.draw.rect(screen, color, rect[1])
+
             # else if color grid
 
 

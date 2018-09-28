@@ -6,22 +6,27 @@ from server import Server
 from colorgrid_consts import *
 
 class Player(object):
-    def __init__(self,colorgrid,  ip, port, server_ip, server_port, is_server=False):
+    def __init__(self, username, colorgrid,  ip, port, server_ip, server_port, is_server=False):
         self.id = 0
         self.new_moves = []
         self.server = None
         self.is_server = is_server
         self.logfile = open("./output.log", 'w')
+        self.username = username
+
+        self.client = Client(ip, port, server_ip, server_port, self, logfile=self.logfile, verbose=True)
+        self.client.listen()
 
         if self.is_server:
             self.server = Server(server_ip, server_port,name="Server",  logfile=self.logfile, verbose=True)
             self.server.listen()
+            self.client.is_host = True
+            self.client.name = "HostClient"
+            self.client.logIn()
 
         self.colorgrid = colorgrid
         self.colorgrid_lock = Lock()
         self.selected_color = 0
-        self.client = Client(ip, port, server_ip, server_port, self, logfile=self.logfile, verbose=True)
-        self.client.listen()
 
     def make_move(self, move):
         self.colorgrid_lock.acquire()
@@ -43,15 +48,12 @@ class Player(object):
         move_info = move_list[1].split('/')
         rect_i = int(move_info[0]) # what rect to color
         delete = move_info[1] == 'r' # erase color?
-        try:
-            color = CLIENT_COLORS[int(move_info[2])]
-        except:
-            color = BLACK
+        color = int(move_info[2])
         # color the rect!
         if not delete:
             self.colorgrid.colorRect(rect_i, color)
         else:
-            self.colorgrid.colorRect(rect_i, None)
+            self.colorgrid.colorRect(rect_i, -1)
         self.colorgrid_lock.release()
 
     def print_players_online(self):

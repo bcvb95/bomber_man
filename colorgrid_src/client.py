@@ -23,6 +23,8 @@ class Client(PacketManager):
         self.username = ""
         self.player_number = None
 
+        self.is_host = False
+
     def sendMsg(self, msg):
         self.sendPacket(msg, self.serverIP, self.serverPort)
 
@@ -30,7 +32,10 @@ class Client(PacketManager):
         orig_data = data
         msg_type, data = data[0], data[1:]
         data_lst = data.split('>')
+
         data, seq = data_lst[0].strip(), int(data_lst[1].strip())
+        if msg_type == 's':
+            print(seq, self.server_seq)
         if not forced:
             if seq > self.server_seq+1:
                 self.stalled_packets.append((orig_data, addr, seq, 0))
@@ -41,9 +46,15 @@ class Client(PacketManager):
 
         if msg_type == 'l':
             self.handleLoginResponse(data, addr)
+        elif msg_type == 's':
+            print("client new board: %s" % data)
+            self.handleBoardSync(data)
+        elif msg_type == 'u':
+            self.sendSyncBoard()
 
-        if msg_type == 'm': # new moves
+        elif msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
+
         if forced:
             return
         for i in range(len(self.stalled_packets)):
@@ -70,12 +81,22 @@ class Client(PacketManager):
         ack_moves = listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
 
+    def handleBoardSync(self, data):
+        print("CLIENT: handling board sync!")
+        for i in range(len(self.player.colorgrid.grid_rects)):
+            self.player.colorgrid.grid_rects[i] = (int(data[i])-1, self.player.colorgrid.grid_rects[i][1])
 
+    def sendSyncBoard(self):
+        print("CLIENT: sending synced board")
+        msg = "u"
+        for rect in self.player.colorgrid.grid_rects:
+            msg += str(int(rect[0])+1)
+        self.sendMsg(msg)
 
     ## added by bjørn
-    def logIn(self, username):
+    def logIn(self):
         if not self.logged_in:
-            login_msg = "l%s" % username
+            login_msg = "l%s" % self.player.username
             self.sendMsg(login_msg)
 
     ## added by bjørn
@@ -93,7 +114,13 @@ class Client(PacketManager):
                     self.username = parsed_login[1]
                     self.player_number = int(parsed_login[2])
                     self.player.selected_color = self.player_number-1
+                    if not self.is_host:
+                        self.sendSyncRequest()
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
+    
+    def sendSyncRequest(self):
+        print("CLIENT: sending sync request.")
+        self.sendMsg("s") # request synced board from server
 
     def unstableConnection(self, addr):
         print("%s: has unstable connection with server" % self.name)

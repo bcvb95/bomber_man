@@ -31,6 +31,7 @@ class Server(PacketManager):
 
         self.rec_moves_lock = Lock()
         self.conn_clients_lock = Lock()
+        self.awaiting_sync = {}
 
         self.broadcastThread = Thread(target=self._broadcastThreadFun)
         self.broadcastLock = Lock()
@@ -47,6 +48,7 @@ class Server(PacketManager):
             self.con_seqs[addr_key] += 1
         else:
             seq = 0
+            print("NEW SEQ to: %s:%s" % (to_ip, to_port))
             self.con_seqs[addr_key] = seq
         self.con_seqs_lock.release()
         msg = "%s>%d" % (msg, seq)
@@ -58,9 +60,12 @@ class Server(PacketManager):
 
         if msg_type == 'l': # client login
             self.handleLogin(data, from_addr)
-
-        if msg_type == 'a': # client sending new moves and ack-moves
+        elif msg_type == 'a': # client sending new moves and ack-moves
             self.handleClientMovesAndAcks(data)
+        elif msg_type == 's':
+            self.handleSyncRequest(data, from_addr)
+        elif msg_type == 'u':
+            self.handleSyncResponse(data)
 
     def unstableConnection(self, addr):
         """ Overrides the PacketManager unstableConnection.
@@ -172,6 +177,23 @@ class Server(PacketManager):
         self.recent_moves = new_recent
 
         self.rec_moves_lock.release()
+
+    def handleSyncRequest(self, data, from_addr):
+        print("SERVER: received sync request!")
+        self.awaiting_sync[from_addr] = True
+
+        #host_client = (username, ip, port)
+        host_client = self.connected_clients[0] 
+        msg = "u"
+        self.sendMsg(msg, host_client[1], host_client[2])
+    
+    def handleSyncResponse(self, data):
+        print("SERVER: handling sync response!")
+        for addr in self.awaiting_sync:
+            if self.awaiting_sync[addr]:
+                msg = "s" + data
+                self.sendMsg(msg, addr[0], addr[1]) 
+                self.awaiting_sync[addr] = False
 
     def handleLogin(self, data, from_addr):
         """
