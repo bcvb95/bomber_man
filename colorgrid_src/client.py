@@ -8,7 +8,7 @@ from packetmanager import PacketManager
 STALLED_TOLERANCE = 10
 
 class Client(PacketManager):
-    def __init__(self, ip, port, serverIP, serverPort, player = None , name="Client",logfile=None,  verbose=False):
+    def __init__(self, ip, port, serverIP, serverPort, player, name="Client", logfile=None, verbose=False):
         PacketManager.__init__(self, ip, port, name, logfile=logfile, verbose=verbose)
         self.serverIP = serverIP
         self.serverPort = serverPort
@@ -32,10 +32,7 @@ class Client(PacketManager):
         orig_data = data
         msg_type, data = data[0], data[1:]
         data_lst = data.split('>')
-
         data, seq = data_lst[0].strip(), int(data_lst[1].strip())
-        if msg_type == 's':
-            print(seq, self.server_seq)
         if not forced:
             if seq > self.server_seq+1:
                 self.stalled_packets.append((orig_data, addr, seq, 0))
@@ -43,15 +40,12 @@ class Client(PacketManager):
             elif seq <= self.server_seq:
                 return
             self.server_seq = seq
-
         if msg_type == 'l':
             self.handleLoginResponse(data, addr)
         elif msg_type == 's':
-            print("client new board: %s" % data)
-            self.handleBoardSync(data)
+            self.player.clientHandleBoardSync(data)
         elif msg_type == 'u':
-            self.sendSyncBoard()
-
+            self.player.clientSendSyncResponse()
         elif msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
 
@@ -68,7 +62,6 @@ class Client(PacketManager):
             else:
                 self.stalled_packets[i] = (self.stalled_packets[i][0], self.stalled_packets[i][1], self.stalled_packets[i][2], self.stalled_packets[i][3] + 1)
 
-
     def handleNewMovesPacket(self, data):
         ack_moves = []
         if len(data) > 0:
@@ -80,18 +73,6 @@ class Client(PacketManager):
         new_moves = listToStringParser(self.player.get_moves())
         ack_moves = listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
-
-    def handleBoardSync(self, data):
-        print("CLIENT: handling board sync!")
-        for i in range(len(self.player.colorgrid.grid_rects)):
-            self.player.colorgrid.grid_rects[i] = (int(data[i])-1, self.player.colorgrid.grid_rects[i][1])
-
-    def sendSyncBoard(self):
-        print("CLIENT: sending synced board")
-        msg = "u"
-        for rect in self.player.colorgrid.grid_rects:
-            msg += str(int(rect[0])+1)
-        self.sendMsg(msg)
 
     ## added by bjørn
     def logIn(self):
@@ -115,12 +96,9 @@ class Client(PacketManager):
                     self.player_number = int(parsed_login[2])
                     self.player.selected_color = self.player_number-1
                     if not self.is_host:
-                        self.sendSyncRequest()
+                        self.player.clientSendSyncRequest()
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
-    
-    def sendSyncRequest(self):
-        print("CLIENT: sending sync request.")
-        self.sendMsg("s") # request synced board from server
+
 
     def unstableConnection(self, addr):
         print("%s: has unstable connection with server" % self.name)

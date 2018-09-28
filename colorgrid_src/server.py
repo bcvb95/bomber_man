@@ -22,8 +22,9 @@ from misc import *
 MAX_CLIENTS = 4
 
 class Server(PacketManager):
-    def __init__(self, ip, port, name="Server", logfile=None, verbose=False):
+    def __init__(self, ip, port, player, name="Server", logfile=None, verbose=False):
         PacketManager.__init__(self, ip, port,name=name, logfile=logfile, verbose=verbose)
+        self.player = player
 
         self.connected_clients = []
         self.num_clients = 0
@@ -31,7 +32,6 @@ class Server(PacketManager):
 
         self.rec_moves_lock = Lock()
         self.conn_clients_lock = Lock()
-        self.awaiting_sync = {}
 
         self.broadcastThread = Thread(target=self._broadcastThreadFun)
         self.broadcastLock = Lock()
@@ -44,11 +44,10 @@ class Server(PacketManager):
         addr_key = "%s%s" % (to_ip, to_port)
         self.con_seqs_lock.acquire()
         if addr_key in self.con_seqs:
-            seq = self.con_seqs[addr_key]
             self.con_seqs[addr_key] += 1
+            seq = self.con_seqs[addr_key]
         else:
             seq = 0
-            print("NEW SEQ to: %s:%s" % (to_ip, to_port))
             self.con_seqs[addr_key] = seq
         self.con_seqs_lock.release()
         msg = "%s>%d" % (msg, seq)
@@ -63,16 +62,16 @@ class Server(PacketManager):
         elif msg_type == 'a': # client sending new moves and ack-moves
             self.handleClientMovesAndAcks(data)
         elif msg_type == 's':
-            self.handleSyncRequest(data, from_addr)
+            self.player.serverHandleSyncRequest(data, from_addr)
         elif msg_type == 'u':
-            self.handleSyncResponse(data)
+            self.player.serverHandleSyncResponse(data)
 
     def unstableConnection(self, addr):
         """ Overrides the PacketManager unstableConnection.
             Handles an unstable connection as a lost connection """
         addr_key = "%s%s" % (addr[0], addr[1])
         self.con_seqs_lock.acquire()
-        self.con_seqs[addr_key] = 0
+        del self.con_seqs[addr_key]
         self.con_seqs_lock.release()
         target_ip, target_port = addr
         for i in range(len(self.connected_clients)):
@@ -81,7 +80,7 @@ class Server(PacketManager):
             if target_ip == tmp_client[1] and target_port == tmp_client[2]:
                 self.connected_clients[i] = None
                 self.num_clients -= 1
-                print("Removing unstable client")
+                if self.verbose: self.log("removing unstable client %s" % tmp_client[0])
                 return
 
     def startBroadcasting(self):
@@ -180,20 +179,9 @@ class Server(PacketManager):
 
     def handleSyncRequest(self, data, from_addr):
         print("SERVER: received sync request!")
-        self.awaiting_sync[from_addr] = True
 
-        #host_client = (username, ip, port)
-        host_client = self.connected_clients[0] 
-        msg = "u"
-        self.sendMsg(msg, host_client[1], host_client[2])
-    
     def handleSyncResponse(self, data):
         print("SERVER: handling sync response!")
-        for addr in self.awaiting_sync:
-            if self.awaiting_sync[addr]:
-                msg = "s" + data
-                self.sendMsg(msg, addr[0], addr[1]) 
-                self.awaiting_sync[addr] = False
 
     def handleLogin(self, data, from_addr):
         """
@@ -230,8 +218,10 @@ class Server(PacketManager):
                 # send login status followed by username and player-number
                 self.num_clients += 1
                 reply = "llogin_success,%s,%d" % (username, new_id)
+                if self.verbose: self.log("client '%s' logged in succesfully." % username)
             else:
                 reply = "llogin_failed"
+                if self.verbose: self.log("client '%s' was refused to log in." % username)
         self.conn_clients_lock.release()
 
         # send login-response to client

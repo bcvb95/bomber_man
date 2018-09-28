@@ -14,7 +14,7 @@ MAX_PACK_SIZE = 4096
 STABLE_CON_TOLERANCE = 5
 
 # TODO:
-# - Tests for this class
+# - FIX BUG: Sequence numbers are some times appended multiple times
 
 # Changelog
 # - Interface changes:
@@ -138,8 +138,8 @@ class PacketManager(object):
 
         pack_max_size = MAX_PACK_SIZE-len(str(seq))
         if len(data) > pack_max_size:
-            if self.verbose: self.log("ERROR - packet %s to send is too big. truncating." % seq)
-            data = data[:pack_max_size-1]
+            if self.verbose: self.log("ERROR - packet %s to send is %d bytes too big. truncating." % (seq, len(data) - pack_max_size))
+            #data = data[:pack_max_size-1]
         data = "%s-%d" % (data, seq)
 
         if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))

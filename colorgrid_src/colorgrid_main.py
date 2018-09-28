@@ -26,7 +26,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
 
     screen = pygame.display.set_mode(SCR_SIZE)
-    colorgrid = ColorGrid(100)
+    colorgrid = ColorGrid(20)
 
     client_ip = getMyIP()
 
@@ -46,14 +46,12 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         screen.fill(WHITE)
 
         for event in pygame.event.get():
-            #keys = pygame.key.get_pressed()
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == K_ESCAPE):
                 if player.is_server:
                     player.server.stopBroadcasting()
                 player.kill()
-                player.logfile.close()
                 sys.exit()
 
             elif event.type == MOUSEBUTTONDOWN and not mouse_down:
