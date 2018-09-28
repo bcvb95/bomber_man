@@ -17,6 +17,8 @@ from misc import *
         'l' - client login
         'm' - client move
         'a' - client sending new moves and ack moves
+        's' - client requests sync
+        'u' - host client replying with sync
 """
 
 MAX_CLIENTS = 4
@@ -73,14 +75,18 @@ class Server(PacketManager):
         self.con_seqs_lock.acquire()
         del self.con_seqs[addr_key]
         self.con_seqs_lock.release()
-        target_ip, target_port = addr
+        if self.verbose: self.log("unstable client at %s:%s" % (addr[0], addr[1]))
+        self.removeClient(addr)
+
+    def removeClient(self, target_addr):
+        target_ip, target_port = target_addr
         for i in range(len(self.connected_clients)):
             tmp_client = self.connected_clients[i]
             if not tmp_client: continue
             if target_ip == tmp_client[1] and target_port == tmp_client[2]:
                 self.connected_clients[i] = None
                 self.num_clients -= 1
-                if self.verbose: self.log("removing unstable client %s" % tmp_client[0])
+                if self.verbose: self.log("removing client %s" % tmp_client[0])
                 return
 
     def startBroadcasting(self):

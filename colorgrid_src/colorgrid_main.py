@@ -26,7 +26,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
 
     screen = pygame.display.set_mode(SCR_SIZE)
-    colorgrid = ColorGrid(20)
+    colorgrid = ColorGrid(50)
 
     client_ip = getMyIP()
 

@@ -14,7 +14,7 @@ MAX_PACK_SIZE = 4096
 STABLE_CON_TOLERANCE = 5
 
 # TODO:
-# - FIX BUG: Sequence numbers are some times appended multiple times
+# - Handle too big packets
 
 # Changelog
 # - Interface changes:
@@ -125,6 +125,7 @@ class PacketManager(object):
         Also logs sent packets so they can be resend later if they are not acknowledged in between.
         """
         seq = int(arg_seq)
+        ori_data = data
         addr_key = "%s%s" % (ip, port)
         if seq != -1:
             self.send_mutex.acquire()
@@ -139,14 +140,15 @@ class PacketManager(object):
         pack_max_size = MAX_PACK_SIZE-len(str(seq))
         if len(data) > pack_max_size:
             if self.verbose: self.log("ERROR - packet %s to send is %d bytes too big. truncating." % (seq, len(data) - pack_max_size))
-            #data = data[:pack_max_size-1]
+            data = data[:pack_max_size-1]
+
         data = "%s-%d" % (data, seq)
 
         if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
         self.sock.sendto(data.encode(), (ip, port))
         if not ack:
             # Unacknowledged packet: (data, seq, last_resend, addr, resend_count)
-            unack_pack = (data, "%d" % seq, time.time(), (ip, port), 0)
+            unack_pack = {"data": ori_data, "seq": "%d" % seq, "last_resend": time.time(), "addr": (ip, port), "resend_count": 0}
             if addr_key in self.unacknowledged_packets:
                 self.unacknowledged_packets[addr_key].append(unack_pack)
             else:
@@ -311,7 +313,7 @@ class PacketManager(object):
         self.send_mutex.acquire()
         unack_packets = self.unacknowledged_packets[addr_key]
         for i in range(len(unack_packets)):
-            if unack_packets[i][1] == seq:
+            if unack_packets[i]["seq"] == seq:
                 if self.verbose: self.log("got packet ack for pack with seq %s" % seq)
                 del self.unacknowledged_packets[addr_key][i]
                 self.send_mutex.release()
@@ -332,14 +334,14 @@ class PacketManager(object):
             while i < len(self.unacknowledged_packets[addr_key]):
                 # Unacknowledged packet: (data, seq, last_resend, addr)
                 packet = self.unacknowledged_packets[addr_key][i]
-                if now - packet[2] > RESEND_TIME:
-                    if self.verbose: self.log("resending packet with sequence number %s" % packet[1])
-                    ip, port = packet[3]
+                if now - packet["last_resend"] > RESEND_TIME:
+                    if self.verbose: self.log("resending packet with sequence number %s" % packet["seq"])
+                    ip, port = packet["addr"]
                     self.send_mutex.release()
-                    self.sendPacket(packet[0], ip, port, arg_seq=packet[1])
+                    self.sendPacket(packet["data"], ip, port, arg_seq=packet["seq"])
                     self.send_mutex.acquire()
-                    if packet[4] >= RESEND_AMOUNT_TOLERANCE:
-                        if self.verbose: self.log("discarding unacknowledged packet with seq %s after resending %d times" % (packet[1], RESEND_AMOUNT_TOLERANCE))
+                    if packet["resend_count"] >= RESEND_AMOUNT_TOLERANCE:
+                        if self.verbose: self.log("discarding unacknowledged packet with seq %s after resending %d times" % (packet["seq"], RESEND_AMOUNT_TOLERANCE))
                         del self.unacknowledged_packets[addr_key][i]
                         self.stable_mutex.acquire()
                         if addr_key not in self.stable_cons:
@@ -352,7 +354,8 @@ class PacketManager(object):
                         self.stable_mutex.release()
                         continue
                     else:
-                        self.unacknowledged_packets[addr_key][i] = (packet[0], packet[1], now, packet[3], packet[4]+1)
+                        self.unacknowledged_packets[addr_key][i]["last_resend"] = now
+                        self.unacknowledged_packets[addr_key][i]["resend_count"] += 1
                 i += 1
         self.send_mutex.release()
 
