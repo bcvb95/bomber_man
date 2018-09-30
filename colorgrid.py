@@ -15,6 +15,7 @@ if __name__ == "__main__":
         subprocess.check_call(["python3", '-m', 'pip', 'install',"--upgrade", 'pygame']) # upgrade pkg
         subprocess.check_call(["python3", '-m', 'pip', 'install', 'netifaces']) # install netifaces package
 
+    sys.path.insert(0, "%s/core/" % os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, "%s/colorgrid_src/" % os.path.dirname(os.path.realpath(__file__)))
 
     import colorgrid_main

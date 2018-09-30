@@ -3,34 +3,13 @@ from misc import *
 from threading import Lock
 from client import Client
 from server import Server
+from base_player import BasePlayer
 
 from colorgrid_consts import *
 
-class Player(object):
+class Player(BasePlayer):
     def __init__(self, username, colorgrid,  ip, port, server_ip, server_port, is_server=False):
-        self.id = 0
-        self.new_moves = []
-        self.server = None
-        self.is_server = is_server
-        log_path = "%s/../log_files_colorgrid/" % os.path.dirname(os.path.abspath(__file__))
-        if not os.path.isdir(log_path):
-            os.mkdir(log_path)
-        logfile_name_client = "%s/output_client_%s:%s.log" % (log_path, ip, port)
-        logfile_name_server = "%s/output_server_%s:%s.log" % (log_path, ip, port)
-        self.logfile_client = open(logfile_name_client, 'w')
-        self.username = username
-
-        self.client = Client(ip, port, server_ip, server_port, self, logfile=self.logfile_client, verbose=True)
-        self.client.listen()
-
-        if self.is_server:
-            self.logfile_server = open(logfile_name_server, 'w')
-            self.server = Server(server_ip, server_port, self, name="Server", logfile=self.logfile_server, verbose=True)
-            self.server.listen()
-            self.client.is_host = True
-            self.client.name = "HostClient"
-            self.client.logIn()
-            self.awaiting_sync = {}
+        BasePlayer.__init__(self, username, ip, port, server_ip, server_port, is_server) 
 
         self.colorgrid = colorgrid
         self.colorgrid_lock = Lock()

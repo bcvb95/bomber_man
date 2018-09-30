@@ -5,7 +5,6 @@ import requests
 import netifaces as ni
 
 
-
 def listToStringParser(lst, seperator=','):
     if len(lst) == 0:
         return ""

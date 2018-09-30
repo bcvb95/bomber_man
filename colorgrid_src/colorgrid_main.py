@@ -15,7 +15,6 @@ MOVE_CD = 0.001
     Client1 |    ip: 127.0.0.1, port: 8403
 """
 
-
 def start_game(username, client_port, server_ip, server_port, is_server):
     pygame.init()
     clock = pygame.time.Clock()
@@ -26,7 +25,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
 
     screen = pygame.display.set_mode(SCR_SIZE)
-    colorgrid = ColorGrid(50)
+    colorgrid = ColorGrid(20)
 
     client_ip = getMyIP()
 
