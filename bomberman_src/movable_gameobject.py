@@ -2,12 +2,13 @@ import time
 import pygame
 from pygame.locals import *
 from gameobject import GameObject
+from bomberman_consts import *
 
 class MoveableGameObject(GameObject):
     def __init__(self, stepsize, img):
         GameObject.__init__(self, img)
 
-        self.step_size = stepsize
+        self.step_size = STEPSIZE
         self.dest = None
         self.source = self.rect.topleft
         self.last_move = 0
