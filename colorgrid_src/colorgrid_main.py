@@ -106,6 +106,9 @@ class ColorGrid(object):
     def colorRect(self, index, color):
         self.grid_rects[index] = (color, self.grid_rects[index][1])
 
+    def clearRect(self, index):
+        self.grid_rects[index] = (-1, self.grid_rects[index][1])
+
     def getRectIndexFromClick(self ,x ,y):
         # find tile closest to mousepress
         min_dist = 9999999

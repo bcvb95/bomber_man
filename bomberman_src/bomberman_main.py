@@ -15,30 +15,30 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     screen = pygame.display.set_mode(SCREEN_SIZE)
 
     # load images
-    player_char_img_dict = res_loader.loadImages()
+    player_char_img_dict = res_loader.loadPlayerImages()
 
     client_ip = misc.getMyIP()
     player = None
 
-    # instantiate player  
+    # instantiate player
     if is_server:
         player = BMPlayer(username,client_ip, client_port, server_ip, server_port, is_server)
         player.server.startBroadcasting()
     else:
         player = BMPlayer(username,client_ip, client_port, server_ip, server_port)
         player.client.logIn()
-    
+
     # wait for the client to log into the server
     while not player.client.logged_in:
         time.sleep(0.001)
 
     # instantiate player character, which is object that is being drawn
     player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[player.client.player_number])
-    start_x, start_y = player_start_positions[player.client.player_number - 1][0], player_start_positions[player.client.player_number - 1][1]
+    start_x, start_y = PLAYER_START_POSITIONS[player.client.player_number - 1][0], PLAYER_START_POSITIONS[player.client.player_number - 1][1]
     player_char.set_pos(start_x, start_y)
 
     start_game = False
-    if player.is_server: 
+    if player.is_server:
         # wait for host to start the game, when it chooses to.
         print("\n\nWaiting for players to join.\n Press \"S\" to start game.\n\n")
 
@@ -65,13 +65,13 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     while game_running:
         do_move = (time.time() - player_char.last_move > MINMOVEFREQ)
         for event in pygame.event.get():
-            exit_cond = (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)) 
+            exit_cond = (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE))
             if exit_cond: # If closing game
                 if player.is_server:
                     player.server.stopBroadcasting()
                 player.kill()
                 sys.exit()
-            
+
             # for each event determine player move
             move = player_char.handle_input(event, do_move)
 
@@ -89,7 +89,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                     move_msg = 'b'
 
                 player.make_move(move_msg)
-                
+
 
         #---- UPDATE ----#
         if do_move:
