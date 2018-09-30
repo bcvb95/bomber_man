@@ -10,8 +10,10 @@ class Client(PacketManager):
         PacketManager.__init__(self, ip, port, name, verbose)
         self.serverIP = serverIP
         self.serverPort = serverPort
-        self.latest_move = 0
         self.player = player
+
+        self.server_seq = 0
+        self.stalled_packets = []
 
         ## added by bjørn
         self.logged_in = False
@@ -29,22 +31,39 @@ class Client(PacketManager):
         if msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
 
-    def handleNewMovesPacket(self, data):
+    def handleNewMovesPacket(self, data, forced=False):
+        orig_data = data
+        data_lst = data.split('>')
+        print(data_lst)
+        data, seq = data_lst[0], int(data_lst[1])
+        if not forced_handle:
+            if seq > self.server_seq+1:
+                self.stalled_packets.append((orig_data, seq, 0))
+                return
+            elif seq <= self.server_seq:
+                return
+            self.server_seq = seq
         ack_moves = []
-        new_moves = listToStringParser(self.player.get_moves())
         if len(data) > 0:
-            moves = sorted([(x, x.split(':')[-1]) for x in stringToListParser(data)], key=lambda x: x[1])
+            moves = data.split(':')
             for i in range(len(moves)):
                 if len(moves[i][0]) == 0: continue
-                timestamp = int(moves[i][1])
-                moves[i] = moves[i][0].strip()
-                if timestamp >= self.latest_move:
-                    ack_moves.append(moves[i])
-                    self.latest_move = timestamp
-                    self.player.do_move(moves[i])
-
+                ack_moves.append(moves[i])
+                self.player.do_move(moves[i])
+        new_moves = listToStringParser(self.player.get_moves())
         ack_moves = listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
+
+        for i in range(len(self.stalled_packets)):
+            force_handle = self.stalled_packets[i][2] >= STALLED_TOLERANCE
+            if self.stalled_packets[i][1] == self.server_seq+1 or force_handle:
+                stalled_data = self.stalled_packets[i][0]
+                del self.stalled_packets[i]
+                self.handleNewMovesPacket(stalled_data, force_handle)
+                return
+            else:
+                self.stalled_packets[i] = (self.stalled_packets[0], stalled_packets[1], stalled_packets[2] + 1)
+
 
     ## added by bjørn
     def logIn(self, username):
