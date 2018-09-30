@@ -103,5 +103,10 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         pygame.display.flip()
 
 
+class GameBoard(object):
+    def __init__(self, size):
+        pass
+
+
 if __name__ == "__main__":
     start_game()

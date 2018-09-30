@@ -2,7 +2,7 @@ import os
 import pygame
 from pygame.locals import *
 
-def loadImages():
+def loadPlayerImages():
     img_dict = { 1 : pygame.image.load('bomberman_src/res/images/player1_img.png'),
                  2 : pygame.image.load('bomberman_src/res/images/player2_img.png'),
                  3 : pygame.image.load('bomberman_src/res/images/player3_img.png'),
