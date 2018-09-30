@@ -13,6 +13,9 @@ class MoveableGameObject(GameObject):
         self.source = self.rect.topleft
         self.last_move = 0
 
+        self.scr_pos = (0,0)
+        self.grid_pos = (0,0)
+
         #---- input related ----#
         self.direction_input_dict = {
             pygame.K_LEFT:  (-1, 0),
