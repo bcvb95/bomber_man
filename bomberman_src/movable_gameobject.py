@@ -1,3 +1,8 @@
+"""
+    TODO:
+        1.  Make this class derive from a base class that only has the "moving" part
+        2.  
+"""
 import time
 import pygame
 from pygame.locals import *

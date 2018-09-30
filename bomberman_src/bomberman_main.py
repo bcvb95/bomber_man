@@ -33,16 +33,18 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         time.sleep(0.001)
 
     #setup gameboard
-    gameboard = GameBoard((20,20))
+    gameboard = GameBoard(GRID_SIZE)
 
-    # instantiate player character, which is object that is being drawn
+    #TODO Instatiate clients player_model 
+
+    # instantiate THIS players character, which is object that is being drawn
     player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[player.client.player_number])
-                     #                        player start position from index
-    start_i, start_j = PLAYER_START_IDX_POSITIONS[player.client.player_number-1][0] , PLAYER_START_IDX_POSITIONS[player.client.player_number-1][1]
-    start_x, start_y = (TILE_SIZE + start_i*TILE_SIZE),  (TILE_SIZE + start_i*TILE_SIZE)
+
+    player_i = player.client.player_number-1
+    start_i, start_j =PLAYER_START_IDX_POSITIONS[player_i]
+    start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
     player_char.grid_pos = (start_i, start_j)
     player_char.scr_pos = (start_x, start_y)
-
     player_char.set_pos(start_x, start_y)
 
     start_game = False
@@ -126,7 +128,8 @@ class GameBoard(object):
         # init grid
         self.game_grid = [["e"]*size[1]]*size[0]
         for row in self.game_grid:
-            print(row)
+            continue
+            #print(row)
 
     def change_tile(self, i, j, new_ele):
         self.game_grid[i][j] = new_ele
