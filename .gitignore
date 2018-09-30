@@ -1,3 +1,6 @@
 *.pyc
 src/*.pyc
+test_log/
 __pycache__
+*log*
+res/

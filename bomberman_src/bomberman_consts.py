@@ -1,0 +1,8 @@
+
+SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = 700,700
+
+player_start_positions = [(50,50), (SCREEN_WIDTH-50, 50), (50, SCREEN_HEIGHT-50), (SCREEN_WIDTH-50, SCREEN_HEIGHT-50)]
+
+#----- Movable gameobject constants-----#
+STEPSIZE = 1.5
+MINMOVEFREQ = 0.1
