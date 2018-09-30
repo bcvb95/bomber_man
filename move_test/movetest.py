@@ -16,6 +16,19 @@ class Moveable(object):
         self.source = self.rect.topleft
         self.last_move = 0
 
+        self.direction_input_dict = {
+                                        pygame.K_LEFT:  (-1, 0),
+                                        pygame.K_a:     (-1, 0),
+                                        pygame.K_RIGHT: (1, 0),
+                                        pygame.K_d:     (1, 0),
+                                        pygame.K_UP:    (0, -1),
+                                        pygame.K_w:     (0, -1),
+                                        pygame.K_DOWN:  (0, 1),
+                                        pygame.K_s:     (0, 1)
+                                    }
+        self.queued_dir_input = (0,0)
+        self.dir_input = (0,0)
+
     def draw(self, screen):
         pygame.draw.rect(screen, self.color, self.rect)
 
@@ -50,16 +63,24 @@ class Moveable(object):
         self.rect.topleft = (self.rect.topleft[0]+dir[0]*self.step_size, \
                              self.rect.topleft[1]+dir[1]*self.step_size)
 
-direction_input_dict = {
-    pygame.K_LEFT:  (-1, 0),
-    pygame.K_a:     (-1, 0),
-    pygame.K_RIGHT: (1, 0),
-    pygame.K_d:     (1, 0),
-    pygame.K_UP:    (0, -1),
-    pygame.K_w:     (0, -1),
-    pygame.K_DOWN:  (0, 1),
-    pygame.K_s:     (0, 1)
-}
+    def handle_input(self, event, do_move):
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.direction_input_dict:
+                self.dir_input = self.direction_input_dict[event.key]
+
+        elif event.type == pygame.KEYUP:
+            if event.key in self.direction_input_dict:
+                if not do_move:
+                    self.queued_dir_input = self.dir_input
+                self.dir_input = (0, 0)
+
+    def do_move(self, do_move):
+        if do_move:
+            if self.queued_dir_input != (0,0):
+                self.move(self.queued_dir_input)
+                self.queued_dir_input = (0,0)
+            else:
+                self.move(self.dir_input)
 
 def main():
     pygame.init()

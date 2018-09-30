@@ -2,7 +2,6 @@
 import sys, os, subprocess, argparse
 
 if __name__ == "__main__":
-
     try:
         import pygame, netifaces
     except:
@@ -28,8 +27,6 @@ if __name__ == "__main__":
     argparser.add_argument("--username", dest="username", help="Username", required=True )
     argparser.add_argument("--is_server", dest="is_server", action="store_true", default=False, help="Make the player a server")
     args = argparser.parse_args()
-
-
 
     ## start game
     colorgrid_main.start_game(args.username, args.port, args.server_ip, args.server_port, args.is_server)

@@ -1,49 +1,42 @@
 import sys
 import math
-from misc import *
+import misc
 
 from colorgrid_consts import *
-from packetmanager import PacketManager
-from server import Server
-from client import Client
-from player import Player
+from colorgrid_player import CGPlayer
 
 MOVE_CD = 0.001
-
 """
     Server  |    ip: 127.0.0.1, port: 8909
     Client1 |    ip: 127.0.0.1, port: 8403
 """
-
 def start_game(username, client_port, server_ip, server_port, is_server):
+    """ This function is called when the game is started  """
     pygame.init()
     clock = pygame.time.Clock()
 
     mouse_down = False
     last_mouse_keys = []
-    last_cd = time.time()
-
+    last_cd = misc.time.time()
 
     screen = pygame.display.set_mode(SCR_SIZE)
     colorgrid = ColorGrid(20)
-
-    client_ip = getMyIP()
-
+    client_ip = misc.getMyIP()
     player = None
 
     if is_server: # if player is a server
-        player = Player(username, colorgrid,client_ip, client_port, client_ip, server_port, is_server)
+        player = CGPlayer(username, colorgrid,client_ip, client_port, client_ip, server_port, is_server)
         player.server.startBroadcasting()
     else:         # if the player is not a server
-        player = Player(username, colorgrid, client_ip, client_port, server_ip, server_port )
+        player = CGPlayer(username, colorgrid, client_ip, client_port, server_ip, server_port )
 
     # log in
     if not player.is_server:
+        player.client.should_sync = True
         player.client.logIn()
 
     while True:
         screen.fill(WHITE)
-
         for event in pygame.event.get():
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
@@ -69,16 +62,15 @@ def start_game(username, client_port, server_ip, server_port, is_server):
             move  = str(pressed_i)
             if last_mouse_keys[0]:
                 move += '/l'
-                if (time.time() - last_cd) > MOVE_CD:
+                if (misc.time.time() - last_cd) > MOVE_CD:
                     player.make_move(move)
-                    last_cd = time.time()
+                    last_cd = misc.time.time()
 
             if last_mouse_keys[2]:
                 move += '/r'
-                if (time.time() - last_cd) > MOVE_CD:
+                if (misc.time.time() - last_cd) > MOVE_CD:
                     player.make_move(move)
-                    last_cd = time.time()
-
+                    last_cd = misc.time.time()
         player.colorgrid_lock.acquire()
         colorgrid.drawGrid(screen)
         player.colorgrid_lock.release()
@@ -121,7 +113,7 @@ class ColorGrid(object):
         for i in range(len(self.grid_rects)):
             rect = self.grid_rects[i]
             center_x, center_y = rect[1].centerx, rect[1].centery
-            dist = get_dist( (x,y), (center_x, center_y))
+            dist = misc.get_dist( (x,y), (center_x, center_y))
             if dist < min_dist:
                 min_dist = dist
                 min_i = i

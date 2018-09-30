@@ -1,13 +1,10 @@
-import os
-from misc import *
+import misc
 from threading import Lock
-from client import Client
-from server import Server
-from base_player import BasePlayer
 
+from base_player import BasePlayer
 from colorgrid_consts import *
 
-class Player(BasePlayer):
+class CGPlayer(BasePlayer):
     def __init__(self, username, colorgrid,  ip, port, server_ip, server_port, is_server=False):
         BasePlayer.__init__(self, username, ip, port, server_ip, server_port, is_server) 
 
@@ -15,12 +12,14 @@ class Player(BasePlayer):
         self.colorgrid_lock = Lock()
         self.selected_color = 0
 
+    # ----- Required method for BasePlayer ------ #
     def make_move(self, move):
         self.colorgrid_lock.acquire()
         move = "%s/%d" % (move, self.selected_color)
-        self.new_moves.append("m%s:%s:%d" % (self.client.player_number, move, timeInMs()))
+        self.new_moves.append("m%s:%s:%d" % (self.client.player_number, move, misc.timeInMs()))
         self.colorgrid_lock.release()
 
+    # ----- Required method for BasePlayer ------ #
     def get_moves(self):
         self.colorgrid_lock.acquire()
         if self.client.verbose: self.client.log("returning moves")
@@ -29,9 +28,10 @@ class Player(BasePlayer):
         self.colorgrid_lock.release()
         return moves
 
+    # ----- Required method for BasePlayer ------ #
     def do_move(self, move):
         self.colorgrid_lock.acquire()
-        move_list = stringToListParser(move, ':')
+        move_list = misc.stringToListParser(move, ':')
         move_info = move_list[1].split('/')
         rect_i = int(move_info[0]) # what rect to color
         delete = move_info[1] == 'r' # erase color?
@@ -39,13 +39,19 @@ class Player(BasePlayer):
         # color the rect!
         if not delete:
             self.colorgrid.colorRect(rect_i, color)
-        else:
-            self.colorgrid.colorRect(rect_i, -1)
         self.colorgrid_lock.release()
+
+
+    # ----- Rest of methods is game specific methods------ #
 
     def clientHandleBoardSync(self, data):
         for i in range(len(self.colorgrid.grid_rects)):
             self.colorgrid.grid_rects[i] = (int(data[i])-1, self.colorgrid.grid_rects[i][1])
+        msg = "u"
+        # Add info to msg needed to sync up client
+        for rect in self.colorgrid.grid_rects:
+            msg += str(int(rect[0])+1)
+        self.client.sendMsg(msg)
 
     def clientSendSyncResponse(self):
         msg = "u"
@@ -69,14 +75,3 @@ class Player(BasePlayer):
                 msg = "s" + data
                 self.server.sendMsg(msg, addr[0], addr[1])
                 self.awaiting_sync[addr] = False
-
-    def print_players_online(self):
-        if self.server != None:
-            print(self.server.connected_clients)
-
-    def kill(self):
-        self.client.kill()
-        self.logfile_client.close()
-        if self.server != None:
-            self.server.kill()
-            self.logfile_server.close()

@@ -6,10 +6,10 @@ TODO:
 import pygame
 import socket
 import time
+import misc
 from packetmanager import PacketManager
 from client import Client
 from threading import Thread, Lock
-from misc import *
 
 """
     Message types:
@@ -133,7 +133,7 @@ class Server(PacketManager):
             b_msg = "m"
             # if recent moves to send
             if num_recent_moves > 0:
-                moves_str = recentMovesToStringParser(self.recent_moves)
+                moves_str = misc.recentMovesToStringParser(self.recent_moves)
                 b_msg += moves_str
             else:
                 pass # do nothing
@@ -154,11 +154,11 @@ class Server(PacketManager):
 
         # add new moves
         self.rec_moves_lock.acquire()
-        for move in stringToListParser(new_moves):
-            move_new_time = stringToListParser(move, ':')
-            move_new_time[2] = str(timeInMs())
-            self.recent_moves.append((listToStringParser(move_new_time, ':'), 0))
-        splt_ack_moves = stringToListParser(ack_moves)
+        for move in misc.stringToListParser(new_moves):
+            move_new_time = misc.stringToListParser(move, ':')
+            move_new_time[2] = str(misc.timeInMs())
+            self.recent_moves.append((misc.listToStringParser(move_new_time, ':'), 0))
+        splt_ack_moves = misc.stringToListParser(ack_moves)
 
         # indexes for recent moves to remove
         pop_i  = []
@@ -193,7 +193,7 @@ class Server(PacketManager):
         """
             Handle login from client
         """
-        parsed_login = stringToListParser(data, ' ')
+        parsed_login = misc.stringToListParser(data, ' ')
         username = parsed_login[0]
         from_ip = from_addr[0]
         from_port = from_addr[1]

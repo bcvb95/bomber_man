@@ -1,7 +1,7 @@
 import pygame
 import socket
 import time
-from misc import *
+import misc
 
 from packetmanager import PacketManager
 
@@ -18,10 +18,10 @@ class Client(PacketManager):
         self.server_seq = -1
         self.stalled_packets = []
 
-        ## added by bjørn
         self.logged_in = False
         self.username = ""
         self.player_number = None
+        self.should_sync = False
 
         self.is_host = False
 
@@ -70,8 +70,8 @@ class Client(PacketManager):
                 if len(moves[i][0]) == 0: continue
                 ack_moves.append(moves[i])
                 self.player.do_move(moves[i])
-        new_moves = listToStringParser(self.player.get_moves())
-        ack_moves = listToStringParser(ack_moves)
+        new_moves = misc.listToStringParser(self.player.get_moves())
+        ack_moves = misc.listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
 
     ## added by bjørn
@@ -85,7 +85,7 @@ class Client(PacketManager):
         if from_addr == (self.serverIP, self.serverPort):
             if not self.logged_in: # if not logged in
                 # handle login/logout related
-                parsed_login = stringToListParser(data, seperator=',')
+                parsed_login = misc.stringToListParser(data, seperator=',')
                 login_resp = parsed_login[0]
                 # get login response
                 if login_resp == "login_failed":
@@ -95,7 +95,7 @@ class Client(PacketManager):
                     self.username = parsed_login[1]
                     self.player_number = int(parsed_login[2])
                     self.player.selected_color = self.player_number-1
-                    if not self.is_host:
+                    if not self.is_host and self.should_sync:
                         self.player.clientSendSyncRequest()
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
 
