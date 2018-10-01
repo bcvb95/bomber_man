@@ -68,8 +68,8 @@ class GameManager(object):
         if self.player.is_server:
             # wait for host to start the game, when it chooses to.
 
-            server_wait_msg1 = "You are a server on %s:%s" % (self.player.client.serverIP, self.player.client.serverPort) 
-            server_wait_msg2 = "Wait for players to join the game, or start by pressing \"S\"" 
+            server_wait_msg1 = "You are a server on %s:%s" % (self.player.client.serverIP, self.player.client.serverPort)
+            server_wait_msg2 = "Wait for players to join the game, or start by pressing \"S\""
             server_wait_msg3 = "%d/4 players connected"
 
             num_connected = len(self.player.server.connected_clients)
@@ -161,9 +161,8 @@ class GameManager(object):
                     self.move = "b"
             elif event.type == pygame.KEYUP:
                 if event.key in KEY_TO_DIR_DICT:
-                    if not event.key != self.move_key_held:
-                        if not self.do_move and time.time() - last_move > 0.05:
-                            self.queued_dir_input = self.dir_input
+                    if not self.do_move and time.time() - last_move > 0.1 and self.dir_input != move_obj.cur_dir:
+                        self.queued_dir_input = self.dir_input
                     if self.move:
                         self.queued_dir_input = (0,0)
                     self.dir_input = (0,0)
