@@ -14,6 +14,7 @@ class Client(PacketManager):
         self.serverPort = serverPort
         self.latest_move = 0
         self.player = player
+        self.game_manager = None
 
         self.server_seq = -1
         self.stalled_packets = []
@@ -77,7 +78,7 @@ class Client(PacketManager):
             for i in range(len(moves)):
                 if len(moves[i][0]) == 0: continue
                 ack_moves.append(moves[i])
-                self.player.do_move(moves[i])
+                self.game_manager.execute_move(moves[i])
         new_moves = misc.listToStringParser(self.player.get_moves())
         ack_moves = misc.listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
