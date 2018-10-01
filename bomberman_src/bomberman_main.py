@@ -1,3 +1,7 @@
+"""
+    TODO:
+        ** Add mutex for client login to server. And make client.logIn first return when logged in.
+"""
 import sys, time
 import pygame
 import misc
@@ -27,26 +31,11 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     else:
         player = BMPlayer(username,client_ip, client_port, server_ip, server_port)
         player.client.logIn()
-    
-    # wait for the client to log into the server
-    while not player.client.logged_in:
-        time.sleep(0.001)
 
     #setup gameboard
     gameboard = GameBoard(GRID_SIZE)
 
-    #TODO Instatiate clients player_model 
-
-    # instantiate THIS players character, which is object that is being drawn
-    player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[player.client.player_number])
-
-    player_i = player.client.player_number-1
-    start_i, start_j =PLAYER_START_IDX_POSITIONS[player_i]
-    start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
-    player_char.grid_pos = (start_i, start_j)
-    player_char.scr_pos = (start_x, start_y)
-    player_char.set_pos(start_x, start_y)
-
+    #------- LOGIN --------#
     start_game = False
     if player.is_server: 
         # wait for host to start the game, when it chooses to.
@@ -61,14 +50,31 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
             for event in pygame.event.get():
                 if (event.type == KEYDOWN and event.key == K_s) or num_connected == 4:
+
+                    player.server.sendInitGame()
                     start_game = True
                     print("> Starting game!")
     else:
         print("\n\nWaiting for the host to start the game. DEBUG: press s to start anyway\n")
-        while not start_game:
+        while not player.client.doInitGame():
             for event in pygame.event.get():
                 if (event.type == KEYDOWN and event.key == K_s):
                     start_game = True
+
+    #TODO Instatiate clients player_model 
+
+    # list for holding all players movable object
+    player_moveable_objects = []
+
+    # instantiate THIS players character, which is object that is being drawn
+    player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[player.client.player_number])
+
+    player_i = player.client.player_number-1
+    start_i, start_j =PLAYER_START_IDX_POSITIONS[player_i]
+    start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
+    player_char.grid_pos = (start_i, start_j)
+    player_char.scr_pos = (start_x, start_y)
+    player_char.set_pos(start_x, start_y)
 
 
     queued_dir_input = (0,0)
