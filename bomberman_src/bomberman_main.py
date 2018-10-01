@@ -182,6 +182,7 @@ class GameManager(object):
                 elif self.move == 'b':
                     move_msg = 'b'
                 self.player.make_move(move_msg)
+                self.player_moveable_objects[self.this_player_i].move(self.move)
 
 
 
@@ -207,7 +208,8 @@ class GameManager(object):
         move_list = misc.stringToListParser(move, ':')
         player_id = int(move_list[0][1])
         move = move_list[1]
-        self.queued_moves.append({"move": move, "pid": player_id-1})
+        if self.this_player_i != player_id-1:
+            self.queued_moves.append({"move": move, "pid": player_id-1})
 
 class GameBoard(object):
     """
