@@ -71,6 +71,9 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                     start_game = True
 
 
+    queued_dir_input = (0,0)
+    dir_input = (0,0)
+    
     game_running = True
     while game_running:
         do_move = (time.time() - player_char.last_move > MINMOVEFREQ)
@@ -82,10 +85,21 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                 player.kill()
                 sys.exit()
             
-            # for each event determine player move
-            move = player_char.handle_input(event, do_move)
+            #---- move specific input ----#
+            move = None
+            if event.type == pygame.KEYDOWN:
+                if event.key in DIRECTION_INPUT_DICT:
+                    dir_input = DIRECTION_INPUT_DICT[event.key]
+                    move = dir_input
+                elif event.key == K_SPACE:
+                    move = "b"
+            elif event.type == pygame.KEYUP:
+                if event.key in DIRECTION_INPUT_DICT:
+                    if not do_move:
+                        queued_dir_input = dir_input
+                    dir_input = (0, 0)
 
-            if move != None:
+            if move != None: # if the player is making a move
                 move_msg = ""
                 if move == (1, 0):
                     move_msg = 'r'
@@ -103,7 +117,11 @@ def start_game(username, client_port, server_ip, server_port, is_server):
 
         #---- UPDATE ----#
         if do_move:
-            player_char.do_move()
+            if queued_dir_input != (0,0):
+                player_char.move(queued_dir_input)
+                queued_dir_input = (0,0)
+            else:
+                player_char.move(dir_input)
 
         player_char.update()
 
