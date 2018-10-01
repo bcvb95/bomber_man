@@ -4,7 +4,6 @@ import misc
 import bomberman_res_loader as res_loader
 from pygame.locals import *
 from bomberman_consts import *
-
 from bomberman_player import BMPlayer
 from movable_gameobject import MoveableGameObject
 

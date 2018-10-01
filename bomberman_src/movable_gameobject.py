@@ -43,7 +43,7 @@ class MoveableGameObject(GameObject):
 
     def movetowarddest(self):
         pos = self.rect.topleft
-        if abs(self.dest[0] - pos[0]) + abs(self.dest[1] - pos[1]) <= self.step_size:
+        if (self.dest[0] - pos[0])**2 + (self.dest[1] - pos[1])**2 <= self.step_size: # CHANGE HERE
             self.rect.topleft = self.dest
             self.dest = None
             self.last_move = time.time()
