@@ -56,7 +56,7 @@ class GameManager(object):
     def start_game(self):
 
         welcome_text = "Welcome to Bomberman!"
-        client_wait_msg1 = "You are logged in as %s on %s:%s."
+        client_wait_msg1 = "You are logged in as %s on %s:%s" % (self.username, misc.getMyIP(), self.client_port)
         client_wait_msg2 = "Waiting for the server to start the game."
 
         #------- LOGIN --------#
@@ -102,8 +102,8 @@ class GameManager(object):
             self.screen.fill((150,150,150))
             # Draw server waiting screen
             welcome_label = self.font_dejavu72.render(welcome_text, 1, BLACK)
-            client_wait_label1 = self.font_dejavu26(client_wait_msg1, 1, BLACK)
-            client_wait_label2 = self.font_dejavu26(client_wait_msg2, 1, BLACK)
+            client_wait_label1 = self.font_dejavu26.render(client_wait_msg1, 1, BLACK)
+            client_wait_label2 = self.font_dejavu26.render(client_wait_msg2, 1, BLACK)
 
             self.screen.blit(welcome_label, (SCREEN_WIDTH/2 - (welcome_label.get_width() / 2), (SCREEN_HEIGHT/4)))
             self.screen.blit(client_wait_label1, (SCREEN_WIDTH/2 - (welcome_label.get_width()/2), SCREEN_HEIGHT/3))
