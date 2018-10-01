@@ -45,14 +45,11 @@ class MoveableGameObject(GameObject):
         maxX = max(self.dest[0], pos[0])
         minY = min(self.dest[1], pos[1])
         maxY = max(self.dest[1], pos[1])
-        print((maxX - minX) + (maxY - minY))
-        print(STEPSIZE)
         if (maxX - minX) + (maxY - minY) <= self.step_size: # CHANGE HERE
             self.rect.topleft = self.dest
             self.dest = None
             self.cur_dir = (0,0)
             self.last_move = time.time()
-            print("steps taken: %d" % self.movecount)
             return
 
         if self.dest[0] > pos[0]:

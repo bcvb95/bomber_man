@@ -31,7 +31,7 @@ class GameManager(object):
         self.screen = pygame.display.set_mode(SCREEN_SIZE)
 
         # load images
-        player_char_img_dict = res_loader.load_player_images()
+        self.player_img_dict = res_loader.load_player_images()
 
         client_ip = misc.getMyIP()
         self.player = None
@@ -51,17 +51,6 @@ class GameManager(object):
         #setup gameboard
         self.gameboard = GameBoard(GRID_SIZE)
 
-        #TODO Instatiate clients player_model
-
-        # instantiate THIS players character, which is object that is being drawn
-        self.player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[self.player.client.player_number])
-
-        player_i = self.player.client.player_number-1
-        start_i, start_j =PLAYER_START_IDX_POSITIONS[player_i]
-        start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
-        self.player_char.grid_pos = (start_i, start_j)
-        self.player_char.scr_pos = (start_x, start_y)
-        self.player_char.set_pos(start_x, start_y)
 
     def start_game(self):
         #------- LOGIN --------#
@@ -83,12 +72,26 @@ class GameManager(object):
                         self.player.server.sendInitGame()
                         start_game = True
                         print("> Starting game!")
-        else:
-            print("\n\nWaiting for the host to start the game. DEBUG: press s to start anyway\n")
-            while not self.player.client.doInitGame():
-                for event in pygame.event.get():
-                    if (event.type == KEYDOWN and event.key == K_s):
-                        start_game = True
+        while not self.player.client.doInitGame():
+            for event in pygame.event.get():
+                if (event.type == KEYDOWN and event.key == K_s):
+                    start_game = True
+
+        # list for holding all players movable object
+        self.player_moveable_objects = []
+        self.this_player_i = self.player.client.player_number-1
+
+        for i in range(self.player.client.init_num_players):
+            move_go = MoveableGameObject(STEPSIZE, self.player_img_dict[i+1])
+            start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
+            start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
+            move_go.grid_pos = (start_i, start_j)
+            move_go.scr_pos = (start_x, start_y)
+            move_go.set_pos(start_x, start_y)
+            self.player_moveable_objects.append(move_go)
+
+
+
         self.game_loop()
 
     def game_loop(self):
@@ -99,7 +102,7 @@ class GameManager(object):
             self.draw()
 
     def handle_input(self):
-        self.do_move = (time.time() - self.player_char.last_move > MINMOVEFREQ)
+        self.do_move = (time.time() - self.player_moveable_objects[self.this_player_i].last_move > MINMOVEFREQ)
         for event in pygame.event.get():
             exit_cond = (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE))
             if exit_cond: # If closing game
@@ -136,15 +139,16 @@ class GameManager(object):
     def update(self):
         if self.do_move:
             if self.queued_dir_input != (0,0):
-                self.player_char.move(self.queued_dir_input)
+                self.player_moveable_objects[self.this_player_i].move(self.queued_dir_input)
                 self.queued_dir_input = (0,0)
-            elif self.player_char.cur_dir != self.dir_input:
-                self.player_char.move(self.dir_input)
-        self.player_char.update()
+            elif self.player_moveable_objects[self.this_player_i].cur_dir != self.dir_input:
+                self.player_moveable_objects[self.this_player_i].move(self.dir_input)
+
+        self.player_moveable_objects[self.this_player_i].update()
 
     def draw(self):
         self.screen.fill((200,200,200))
-        self.player_char.draw(self.screen)
+        self.player_moveable_objects[self.this_player_i].draw(self.screen)
         pygame.display.flip()
 
 class GameBoard(object):
