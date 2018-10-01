@@ -6,7 +6,6 @@ import sys, time
 import pygame
 from threading import Thread, Lock, Condition
 import misc
-import bomberman_res_loader as res_loader
 from pygame.locals import *
 from bomberman_consts import *
 from bomberman_player import BMPlayer
@@ -35,8 +34,11 @@ class GameManager(object):
         pygame.display.set_caption("Bomberman Pygame-edition")
         self.screen = pygame.display.set_mode(SCREEN_SIZE)
 
-        # load images
-        self.player_img_dict = res_loader.load_player_images()
+        # load fonts
+        self.font_dejavu72 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 72)
+        self.font_dejavu48 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 48)
+        self.font_dejavu26 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 26)
+        self.font_dejavu14 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 14)
 
         client_ip = misc.getMyIP()
         self.player = None
@@ -56,11 +58,19 @@ class GameManager(object):
 
 
     def start_game(self):
+
+        welcome_text = "Welcome to Bomberman!"
+        client_wait_msg1 = "You are logged in as %s on %s:%s" % (self.username, misc.getMyIP(), self.client_port)
+        client_wait_msg2 = "Waiting for the server to start the game."
+
         #------- LOGIN --------#
         start_game = False
         if self.player.is_server:
             # wait for host to start the game, when it chooses to.
-            print("\n\nWaiting for players to join.\n Press \"S\" to start game.\n\n")
+
+            server_wait_msg1 = "You are a server on %s:%s" % (self.player.client.serverIP, self.player.client.serverPort) 
+            server_wait_msg2 = "Wait for players to join the game, or start by pressing \"S\"" 
+            server_wait_msg3 = "%d/4 players connected"
 
             num_connected = len(self.player.server.connected_clients)
             print("> %d/4 number of players connected." % num_connected)
@@ -76,17 +86,41 @@ class GameManager(object):
                         start_game = True
                         print("> Starting game!")
 
+                # Draw server waiting screen
+                self.screen.fill((150,150,150))
+                welcome_label = self.font_dejavu72.render(welcome_text, 1, BLACK)
+
+                server_wait_label1 = self.font_dejavu26.render(server_wait_msg1, 1, BLACK)
+                server_wait_label2 = self.font_dejavu26.render(server_wait_msg2, 1, BLACK)
+                server_wait_label3 = self.font_dejavu48.render(server_wait_msg3 % num_connected, 1, BLACK)
+
+                # Draw text
+                self.screen.blit(welcome_label, (SCREEN_WIDTH/2 - (welcome_label.get_width() / 2), (SCREEN_HEIGHT/4)))
+                self.screen.blit(server_wait_label1, (SCREEN_WIDTH/2 - (welcome_label.get_width() /2), SCREEN_HEIGHT/3))
+                self.screen.blit(server_wait_label2, (SCREEN_WIDTH/2 - (welcome_label.get_width() /2), SCREEN_HEIGHT/3 + 26))
+                self.screen.blit(server_wait_label3, (SCREEN_WIDTH/2 - (server_wait_label3.get_width() / 2), SCREEN_HEIGHT/2))
+
+                pygame.display.flip()
+
         while not self.player.client.doInitGame():
-            for event in pygame.event.get():
-                if (event.type == KEYDOWN and event.key == K_s):
-                    start_game = True
+            self.screen.fill((150,150,150))
+            # Draw server waiting screen
+            welcome_label = self.font_dejavu72.render(welcome_text, 1, BLACK)
+            client_wait_label1 = self.font_dejavu26.render(client_wait_msg1, 1, BLACK)
+            client_wait_label2 = self.font_dejavu26.render(client_wait_msg2, 1, BLACK)
+
+            self.screen.blit(welcome_label, (SCREEN_WIDTH/2 - (welcome_label.get_width() / 2), (SCREEN_HEIGHT/4)))
+            self.screen.blit(client_wait_label1, (SCREEN_WIDTH/2 - (welcome_label.get_width()/2), SCREEN_HEIGHT/3))
+            self.screen.blit(client_wait_label2, (SCREEN_WIDTH/2 - (welcome_label.get_width()/2), SCREEN_HEIGHT/3 + 26))
+
+            pygame.display.flip()
 
         # list for holding all players movable object
         self.player_moveable_objects = []
         self.this_player_i = self.player.client.player_number-1
 
         for i in range(self.player.client.init_num_players):
-            move_go = MoveableGameObject(STEPSIZE, self.player_img_dict[i+1])
+            move_go = MoveableGameObject(STEPSIZE, PLAYER_IMG_DICT[i+1])
             start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
             start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
             move_go.grid_pos = (start_i, start_j)
