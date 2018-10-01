@@ -138,7 +138,7 @@ class GameManager(object):
             if self.queued_dir_input != (0,0):
                 self.player_char.move(self.queued_dir_input)
                 self.queued_dir_input = (0,0)
-            else:
+            elif self.player_char.cur_dir != self.dir_input:
                 self.player_char.move(self.dir_input)
         self.player_char.update()
 
