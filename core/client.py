@@ -2,7 +2,7 @@ import pygame
 import socket
 import time
 import misc
-
+from threading import Lock, Condition
 from packetmanager import PacketManager
 
 STALLED_TOLERANCE = 10
@@ -19,11 +19,16 @@ class Client(PacketManager):
         self.stalled_packets = []
 
         self.logged_in = False
+        self.login_lock = Lock()
+        self.login_cond = Condition(self.login_lock) 
+
         self.username = ""
         self.player_number = None
         self.should_sync = False
 
         self.is_host = False
+        self.init_game_lock = Lock()
+        self.init_game = False
 
     def sendMsg(self, msg):
         self.sendPacket(msg, self.serverIP, self.serverPort)
@@ -42,6 +47,8 @@ class Client(PacketManager):
             self.server_seq = seq
         if msg_type == 'l':
             self.handleLoginResponse(data, addr)
+        elif msg_type == 'i':
+            self.handleInitGame(data)
         elif msg_type == 's':
             self.player.clientHandleBoardSync(data)
         elif msg_type == 'u':
@@ -76,9 +83,14 @@ class Client(PacketManager):
 
     ## added by bjørn
     def logIn(self):
-        if not self.logged_in:
+        self.login_cond.acquire()
+        while True:
+            if self.logged_in:
+                self.login_cond.release()
+                break
             login_msg = "l%s" % self.player.username
             self.sendMsg(login_msg)
+            self.login_cond.wait()
 
     ## added by bjørn
     def handleLoginResponse(self, data, from_addr):
@@ -91,7 +103,11 @@ class Client(PacketManager):
                 if login_resp == "login_failed":
                     self.logged_in = False
                 elif login_resp == "login_success":
+                    self.login_cond.acquire()
                     self.logged_in = True
+                    self.login_cond.notifyAll()
+                    self.login_cond.release()
+
                     self.username = parsed_login[1]
                     self.player_number = int(parsed_login[2])
                     self.player.selected_color = self.player_number-1
@@ -99,6 +115,17 @@ class Client(PacketManager):
                         self.player.clientSendSyncRequest()
                     print("CLIENT: logged into server with username %s as player number %s" % (self.username, self.player_number))
 
+    def handleInitGame(self, data):
+        self.init_game_lock.acquire()
+        self.init_game = True
+        self.init_game_lock.release()
+
+    def doInitGame(self):
+        res = False
+        self.init_game_lock.acquire()
+        res = self.init_game
+        self.init_game_lock.release()
+        return res
 
     def unstableConnection(self, addr):
         print("%s: has unstable connection with server" % self.name)

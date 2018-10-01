@@ -1,3 +1,7 @@
+"""
+    TODO:
+        ** Add mutex for client login to server. And make client.logIn first return when logged in.
+"""
 import sys, time
 import pygame
 import misc
@@ -60,28 +64,31 @@ class GameManager(object):
         self.player_char.set_pos(start_x, start_y)
 
     def start_game(self):
-        start_game_flag = False
+        #------- LOGIN --------#
+        start_game = False
         if self.player.is_server:
             # wait for host to start the game, when it chooses to.
             print("\n\nWaiting for players to join.\n Press \"S\" to start game.\n\n")
 
             num_connected = len(self.player.server.connected_clients)
             print("> %d/4 number of players connected." % num_connected)
-            while not start_game_flag:
+            while not start_game:
                 if len(self.player.server.connected_clients) != num_connected:
                     num_connected = len(self.player.server.connected_clients)
                     print("> %d/4 number of players connected" % num_connected)
 
                 for event in pygame.event.get():
                     if (event.type == KEYDOWN and event.key == K_s) or num_connected == 4:
-                        start_game_flag = True
+
+                        self.player.server.sendInitGame()
+                        start_game = True
                         print("> Starting game!")
         else:
             print("\n\nWaiting for the host to start the game. DEBUG: press s to start anyway\n")
-            while not start_game_flag:
+            while not self.player.client.doInitGame():
                 for event in pygame.event.get():
                     if (event.type == KEYDOWN and event.key == K_s):
-                        start_game_flag = True
+                        start_game = True
         self.game_loop()
 
     def game_loop(self):
