@@ -44,9 +44,8 @@ class GameManager(object):
             self.player = BMPlayer(username,client_ip, client_port, server_ip, server_port)
             self.player.client.logIn()
 
-        # wait for the client to log into the server
-        while not self.player.client.logged_in:
-            time.sleep(0.001)
+        # add gameboard reference to client
+        self.player.client.game_manager = self
 
         #setup gameboard
         self.gameboard = GameBoard(GRID_SIZE)
@@ -72,6 +71,7 @@ class GameManager(object):
                         self.player.server.sendInitGame()
                         start_game = True
                         print("> Starting game!")
+
         while not self.player.client.doInitGame():
             for event in pygame.event.get():
                 if (event.type == KEYDOWN and event.key == K_s):
@@ -89,8 +89,6 @@ class GameManager(object):
             move_go.scr_pos = (start_x, start_y)
             move_go.set_pos(start_x, start_y)
             self.player_moveable_objects.append(move_go)
-
-
 
         self.game_loop()
 
@@ -144,12 +142,21 @@ class GameManager(object):
             elif self.player_moveable_objects[self.this_player_i].cur_dir != self.dir_input:
                 self.player_moveable_objects[self.this_player_i].move(self.dir_input)
 
-        self.player_moveable_objects[self.this_player_i].update()
+        for move_go in self.player_moveable_objects:
+            move_go.update()
 
     def draw(self):
         self.screen.fill((200,200,200))
-        self.player_moveable_objects[self.this_player_i].draw(self.screen)
+        for move_object in self.player_moveable_objects:
+            move_object.draw(self.screen)
         pygame.display.flip()
+
+    def execute_move(self, move):
+        move_list = misc.stringToListParser(move, ':')
+        player_id = int(move_list[0][1])
+        move = move_list[1]
+        self.player_moveable_objects[player_id-1].move(MOVE_TO_DIR_DICT[move])
+        print("%s do_moves: " % self.username, move_list)
 
 class GameBoard(object):
     """
