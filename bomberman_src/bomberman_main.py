@@ -69,18 +69,15 @@ class GameManager(object):
             server_wait_msg3 = "%d/4 players connected"
 
             num_connected = len(self.player.server.connected_clients)
-            print("> %d/4 number of players connected." % num_connected)
             while not start_game:
                 if len(self.player.server.connected_clients) != num_connected:
                     num_connected = len(self.player.server.connected_clients)
-                    print("> %d/4 number of players connected" % num_connected)
 
                 for event in pygame.event.get():
                     if (event.type == KEYDOWN and event.key == K_s) or num_connected == 4:
 
                         self.player.server.sendInitGame()
                         start_game = True
-                        print("> Starting game!")
 
                 # Draw server waiting screen
                 self.screen.fill((150,150,150))
@@ -115,11 +112,14 @@ class GameManager(object):
         self.player_moveable_objects = []
         self.this_player_i = self.player.client.player_number-1
 
+
         for i in range(self.player.client.init_num_players):
             move_go = MoveableGameObject(STEPSIZE, PLAYER_IMG_DICT[i+1])
             start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
             start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
             move_go.grid_pos = (start_i, start_j)
+            # update gameboard
+            self.gameboard.change_tile(start_i, start_j, 'p')
             move_go.scr_pos = (start_x, start_y)
             move_go.set_pos(start_x, start_y)
             self.player_moveable_objects.append(move_go)
@@ -189,6 +189,9 @@ class GameManager(object):
         move_list = misc.stringToListParser(move, ':')
         player_id = int(move_list[0][1])
         move = move_list[1]
+
+        direction = MOVE_TO_DIR_DICT[move]
+
         self.player_moveable_objects[player_id-1].move(MOVE_TO_DIR_DICT[move])
         print("%s do_moves: " % self.username, move_list)
 
@@ -205,13 +208,15 @@ class GameBoard(object):
     def __init__(self, size):
         self.size = size
         # init grid
-        self.game_grid = [["e"]*size[1]]*size[0]
-        for row in self.game_grid:
-            continue
-            #print(row)
+        self.game_grid = [['e']*size[1]]*size[0]
 
     def change_tile(self, i, j, new_ele):
         self.game_grid[i][j] = new_ele
+    
+    def print_grid(self):
+        for row in self.game_grid:
+            print(row)
+        print('\n')
 
 def main(username, client_port, server_ip, server_port, is_server):
     gameManager = GameManager(username, client_port, server_ip, server_port, is_server)
