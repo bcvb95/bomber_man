@@ -29,6 +29,7 @@ class Client(PacketManager):
         self.is_host = False
         self.init_game_lock = Lock()
         self.init_game = False
+        self.init_num_players = 0
 
     def sendMsg(self, msg):
         self.sendPacket(msg, self.serverIP, self.serverPort)
@@ -118,6 +119,7 @@ class Client(PacketManager):
     def handleInitGame(self, data):
         self.init_game_lock.acquire()
         self.init_game = True
+        self.init_num_players = int(data[-1])
         self.init_game_lock.release()
 
     def doInitGame(self):

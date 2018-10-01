@@ -19,7 +19,7 @@ def start_game(username, client_port, server_ip, server_port, is_server):
     screen = pygame.display.set_mode(SCREEN_SIZE)
 
     # load images
-    player_char_img_dict = res_loader.load_player_images()
+    player_img_dict = res_loader.load_player_images()
 
     client_ip = misc.getMyIP()
     player = None
@@ -54,35 +54,36 @@ def start_game(username, client_port, server_ip, server_port, is_server):
                     player.server.sendInitGame()
                     start_game = True
                     print("> Starting game!")
-    else:
-        print("\n\nWaiting for the host to start the game. DEBUG: press s to start anyway\n")
-        while not player.client.doInitGame():
-            for event in pygame.event.get():
-                if (event.type == KEYDOWN and event.key == K_s):
-                    start_game = True
+    
+    print("\n\nWaiting for the host to start the game. DEBUG: press s to start anyway\n")
+    while not player.client.doInitGame():
+        for event in pygame.event.get():
+            if (event.type == KEYDOWN and event.key == K_s):
+                start_game = True
 
     #TODO Instatiate clients player_model 
 
     # list for holding all players movable object
     player_moveable_objects = []
+    this_player_i = player.client.player_number-1
 
-    # instantiate THIS players character, which is object that is being drawn
-    player_char = MoveableGameObject(STEPSIZE, player_char_img_dict[player.client.player_number])
+    for i in range(player.client.init_num_players):
+        move_go = MoveableGameObject(STEPSIZE, player_img_dict[i+1])
+        start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
+        start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
+        move_go.grid_pos = (start_i, start_j)
+        move_go.scr_pos = (start_x, start_y)
+        move_go.set_pos(start_x, start_y)
+        player_moveable_objects.append(move_go)
 
-    player_i = player.client.player_number-1
-    start_i, start_j =PLAYER_START_IDX_POSITIONS[player_i]
-    start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
-    player_char.grid_pos = (start_i, start_j)
-    player_char.scr_pos = (start_x, start_y)
-    player_char.set_pos(start_x, start_y)
-
+    print(player_moveable_objects)
 
     queued_dir_input = (0,0)
     dir_input = (0,0)
     
     game_running = True
     while game_running:
-        do_move = (time.time() - player_char.last_move > MINMOVEFREQ)
+        do_move = (time.time() - player_moveable_objects[this_player_i].last_move > MINMOVEFREQ)
         for event in pygame.event.get():
             exit_cond = (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)) 
             if exit_cond: # If closing game
@@ -124,16 +125,20 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         #---- UPDATE ----#
         if do_move:
             if queued_dir_input != (0,0):
-                player_char.move(queued_dir_input)
+                player_moveable_objects[this_player_i].move(queued_dir_input)
                 queued_dir_input = (0,0)
             else:
-                player_char.move(dir_input)
+                player_moveable_objects[this_player_i].move(dir_input)
+                player_moveable_objects[this_player_i].move(dir_input)
 
-        player_char.update()
+        player_moveable_objects[this_player_i].update()
 
         #---- DRAW ----#
         screen.fill((200,200,200))
-        player_char.draw(screen)
+
+        for move_go in player_moveable_objects:
+            move_go.draw(screen)
+
         pygame.display.flip()
 
 

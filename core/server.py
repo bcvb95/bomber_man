@@ -234,7 +234,7 @@ class Server(PacketManager):
         self.sendMsg(reply, from_ip, from_port)
 
     def sendInitGame(self):
-        msg = 'i'
+        msg = 'i/' + str(len(self.connected_clients))
         for i in range(len(self.connected_clients)):
             usr_name, client_ip, client_port = self.connected_clients[i]
             self.sendMsg(msg, client_ip, client_port)
