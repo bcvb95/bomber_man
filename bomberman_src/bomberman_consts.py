@@ -11,6 +11,7 @@ PLAYER_START_IDX_POSITIONS = [(0,0), (GRID_WIDTH-1, 0), (GRID_WIDTH-1, GRID_HEIG
 #----- Movable gameobject constants-----#
 STEPSIZE = 3 # Must be int
 MINMOVEFREQ = 0.15
+STEPFREQ = 0.01
 KEY_TO_DIR_DICT = {
     K_LEFT:  (-1, 0),
     K_a:     (-1, 0),
@@ -24,11 +25,7 @@ KEY_TO_DIR_DICT = {
 
 DIR_TO_MOVE_DICT = {
     (-1, 0): 'l',
-    (-1, 0): 'l',
     (1, 0):  'r',
-    (1, 0):  'r',
-    (0, -1): 'u',
     (0, -1): 'u',
     (0, 1):  'd',
-    (0, 1):  'd'
 }
