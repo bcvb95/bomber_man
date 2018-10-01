@@ -10,8 +10,8 @@ PLAYER_START_IDX_POSITIONS = [(0,0), (GRID_WIDTH-1, 0), (GRID_WIDTH-1, GRID_HEIG
 
 #----- Movable gameobject constants-----#
 STEPSIZE = 3 # Must be int
-MINMOVEFREQ = 0.15
-STEPFREQ = 0.01
+MINMOVEFREQ = 0.3
+STEPFREQ = 0.005
 KEY_TO_DIR_DICT = {
     K_LEFT:  (-1, 0),
     K_a:     (-1, 0),

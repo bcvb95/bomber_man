@@ -4,6 +4,7 @@
 """
 import sys, time
 import pygame
+from threading import Thread, Lock, Condition
 import misc
 import bomberman_res_loader as res_loader
 from pygame.locals import *
@@ -24,6 +25,10 @@ class GameManager(object):
         self.dir_input = (0,0)
         self.move_key_held = None
         self.do_move = False
+        self.move = None
+
+        # execute moves
+        self.queued_moves = []
 
         # init pygame and screen
         pygame.init()
@@ -37,11 +42,10 @@ class GameManager(object):
         self.player = None
 
         # instantiate player
+        self.player = BMPlayer(username,client_ip, client_port, server_ip, server_port, is_server)
         if is_server:
-            self.player = BMPlayer(username,client_ip, client_port, server_ip, server_port, is_server)
             self.player.server.startBroadcasting()
         else:
-            self.player = BMPlayer(username,client_ip, client_port, server_ip, server_port)
             self.player.client.logIn()
 
         # add gameboard reference to client
@@ -100,7 +104,12 @@ class GameManager(object):
             self.draw()
 
     def handle_input(self):
-        self.do_move = (time.time() - self.player_moveable_objects[self.this_player_i].last_move > MINMOVEFREQ)
+        move_obj = self.player_moveable_objects[self.this_player_i]
+        last_move = move_obj.last_move
+        self.do_move = (time.time() - last_move > MINMOVEFREQ)
+        if self.do_move:
+            move_obj.last_move = time.time()
+        self.move = None
         for event in pygame.event.get():
             exit_cond = (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE))
             if exit_cond: # If closing game
@@ -110,37 +119,47 @@ class GameManager(object):
                 sys.exit()
 
             #---- move specific input ----#
-            move = None
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_TO_DIR_DICT and not self.move_key_held:
                     self.dir_input = KEY_TO_DIR_DICT[event.key]
-                    move = self.dir_input
                     self.move_key_held = event.key
                 elif event.key == K_SPACE:
-                    move = "b"
+                    self.move = "b"
             elif event.type == pygame.KEYUP:
-                if event.key in KEY_TO_DIR_DICT and event.key == self.move_key_held:
-                    if not self.do_move:
-                        self.queued_dir_input = self.dir_input
-                    self.dir_input = (0, 0)
+                if event.key in KEY_TO_DIR_DICT:
+                    if not event.key != self.move_key_held:
+                        if not self.do_move and time.time() - last_move > 0.05:
+                            self.queued_dir_input = self.dir_input
+                    if self.move:
+                        self.queued_dir_input = (0,0)
+                    self.dir_input = (0,0)
                     self.move_key_held = None
 
-            if move != None: # if the player is making a move
-                move_msg = ""
-                if move in DIR_TO_MOVE_DICT:
-                    move_msg = DIR_TO_MOVE_DICT[move]
-                elif move == 'b':
-                    move_msg = 'b'
-
-                self.player.make_move(move_msg)
-
-    def update(self):
         if self.do_move:
             if self.queued_dir_input != (0,0):
-                self.player_moveable_objects[self.this_player_i].move(self.queued_dir_input)
+                self.move = self.queued_dir_input
                 self.queued_dir_input = (0,0)
-            elif self.player_moveable_objects[self.this_player_i].cur_dir != self.dir_input:
-                self.player_moveable_objects[self.this_player_i].move(self.dir_input)
+            elif self.dir_input != (0,0):
+                self.move = self.dir_input
+
+            if self.move: # if the player is making a move
+                move_msg = ""
+                if self.move in DIR_TO_MOVE_DICT:
+                    move_msg = DIR_TO_MOVE_DICT[self.move]
+                elif self.move == 'b':
+                    move_msg = 'b'
+                self.player.make_move(move_msg)
+
+
+
+    def update(self):
+        i = 0
+        while i < len(self.queued_moves) and len(self.queued_moves) != 0:
+            move, player_id = self.queued_moves[i]["move"], self.queued_moves[i]["pid"]
+            if self.player_moveable_objects[player_id].move(MOVE_TO_DIR_DICT[move]) != 1:
+                del self.queued_moves[i]
+            else:
+                i += 1
 
         for move_go in self.player_moveable_objects:
             move_go.update()
@@ -155,8 +174,7 @@ class GameManager(object):
         move_list = misc.stringToListParser(move, ':')
         player_id = int(move_list[0][1])
         move = move_list[1]
-        self.player_moveable_objects[player_id-1].move(MOVE_TO_DIR_DICT[move])
-        print("%s do_moves: " % self.username, move_list)
+        self.queued_moves.append({"move": move, "pid": player_id-1})
 
 class GameBoard(object):
     """

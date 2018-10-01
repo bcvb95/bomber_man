@@ -12,7 +12,6 @@ from bomberman_consts import *
 class MoveableGameObject(GameObject):
     def __init__(self, stepsize, img):
         GameObject.__init__(self, img)
-
         self.step_size = STEPSIZE
         self.dest = None
         self.cur_dir = (0,0)
@@ -32,12 +31,13 @@ class MoveableGameObject(GameObject):
 
     def move(self, dir):
         if self.dest:
-            return
+            return 1
         self.movecount = 0
         self.cur_dir = dir
         self.dest = ((self.rect.topleft[0]+dir[0]*self.rect.width, \
                       self.rect.topleft[1]+dir[1]*self.rect.height))
         self.source = self.rect.topleft
+        return 0
 
     def movetowarddest(self):
         pos = self.rect.topleft
@@ -50,7 +50,6 @@ class MoveableGameObject(GameObject):
             self.rect.topleft = self.dest
             self.dest = None
             self.cur_dir = (0,0)
-            self.last_move = time.time()
             return
 
         if self.dest[0] > pos[0]:
