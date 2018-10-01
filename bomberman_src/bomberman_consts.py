@@ -17,7 +17,8 @@ ORANGE = Color(200,200,0,1)
 
 #----- Movable gameobject constants-----#
 STEPSIZE = 3 # Must be int
-MINMOVEFREQ = 0.15
+MINMOVEFREQ = 0.3
+STEPFREQ = 0.005
 KEY_TO_DIR_DICT = {
     K_LEFT:  (-1, 0),
     K_a:     (-1, 0),

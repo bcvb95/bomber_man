@@ -13,13 +13,13 @@ class BasePlayer(object):
         self.is_server = is_server
 
         # Setup log's for the server and the client
-        log_path = "%s/../log_files_colorgrid/" % os.path.dirname(os.path.abspath(__file__))
+        log_path = "%s/../log_files_bombergrid/" % os.path.dirname(os.path.abspath(__file__))
         if not os.path.isdir(log_path):
             os.mkdir(log_path)
         logfile_name_client = "%s/output_client_%s:%s.log" % (log_path, ip, port)
         logfile_name_server = "%s/output_server_%s:%s.log" % (log_path, ip, port)
         self.logfile_client = open(logfile_name_client, 'w')
-        
+
         # A username used to login with
         self.username = username
         # Every player is/has a client
@@ -46,7 +46,7 @@ class BasePlayer(object):
 
     #--------- Must be overridden by derived classes ---------#
     def get_moves(self):
-        """ 
+        """
             Returns a list of the players move-list.
             Any player-class derived from this class must override this function.
         """
@@ -57,7 +57,7 @@ class BasePlayer(object):
 
     #--------- Must be overridden by derived classes ---------#
     def do_move(self, move):
-        """ 
+        """
             Is called when a move is to be executed by the player:
             Any player-class derived from this class must override this function.
         """
