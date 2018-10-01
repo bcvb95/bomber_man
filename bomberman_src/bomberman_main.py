@@ -182,8 +182,7 @@ class GameManager(object):
                 elif self.move == 'b':
                     move_msg = 'b'
                 self.player.make_move(move_msg)
-                self.player_moveable_objects[self.this_player_i].move(self.move)
-
+                self.queued_moves.append({"move": DIR_TO_MOVE_DICT[self.move], "pid": self.this_player_i})
 
 
     def update(self):
