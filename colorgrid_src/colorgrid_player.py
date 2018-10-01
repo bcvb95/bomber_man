@@ -6,7 +6,7 @@ from colorgrid_consts import *
 
 class CGPlayer(BasePlayer):
     def __init__(self, username, colorgrid,  ip, port, server_ip, server_port, is_server=False):
-        BasePlayer.__init__(self, username, ip, port, server_ip, server_port, is_server) 
+        BasePlayer.__init__(self, username, ip, port, server_ip, server_port, is_server)
 
         self.colorgrid = colorgrid
         self.colorgrid_lock = Lock()
@@ -39,6 +39,8 @@ class CGPlayer(BasePlayer):
         # color the rect!
         if not delete:
             self.colorgrid.colorRect(rect_i, color)
+        else:
+            self.colorgrid.clearRect(rect_i)
         self.colorgrid_lock.release()
 
 

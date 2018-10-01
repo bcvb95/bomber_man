@@ -72,8 +72,8 @@ class PacketManager(object):
         # flag for killing pool
         self.kill_pool = False
         # mutex and cond object for managing queue
-        self.pool_lock = Lock()
-        self.pool_cond = Condition(self.pool_lock)
+        pool_lock = Lock()
+        self.pool_cond = Condition(pool_lock)
         # initialize worker threads
         for i in range(WORKER_THREADS):
             worker = Thread(target=self._receiveMsg)

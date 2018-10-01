@@ -17,15 +17,15 @@ class Moveable(object):
         self.last_move = 0
 
         self.direction_input_dict = {
-                                        pygame.K_LEFT:  (-1, 0),
-                                        pygame.K_a:     (-1, 0),
-                                        pygame.K_RIGHT: (1, 0),
-                                        pygame.K_d:     (1, 0),
-                                        pygame.K_UP:    (0, -1),
-                                        pygame.K_w:     (0, -1),
-                                        pygame.K_DOWN:  (0, 1),
-                                        pygame.K_s:     (0, 1)
-                                    }
+            pygame.K_LEFT:  (-1, 0),
+            pygame.K_a:     (-1, 0),
+            pygame.K_RIGHT: (1, 0),
+            pygame.K_d:     (1, 0),
+            pygame.K_UP:    (0, -1),
+            pygame.K_w:     (0, -1),
+            pygame.K_DOWN:  (0, 1),
+            pygame.K_s:     (0, 1)
+        }
         self.queued_dir_input = (0,0)
         self.dir_input = (0,0)
 

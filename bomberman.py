@@ -27,4 +27,4 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     import bomberman_main
-    bomberman_main.start_game(args.username, args.port, args.server_ip, args.server_port, args.is_server) 
+    bomberman_main.main(args.username, args.port, args.server_ip, args.server_port, args.is_server)
