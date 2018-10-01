@@ -61,8 +61,6 @@ def start_game(username, client_port, server_ip, server_port, is_server):
             if (event.type == KEYDOWN and event.key == K_s):
                 start_game = True
 
-    #TODO Instatiate clients player_model 
-
     # list for holding all players movable object
     player_moveable_objects = []
     this_player_i = player.client.player_number-1
@@ -75,8 +73,6 @@ def start_game(username, client_port, server_ip, server_port, is_server):
         move_go.scr_pos = (start_x, start_y)
         move_go.set_pos(start_x, start_y)
         player_moveable_objects.append(move_go)
-
-    print(player_moveable_objects)
 
     queued_dir_input = (0,0)
     dir_input = (0,0)
