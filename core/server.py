@@ -21,6 +21,8 @@ from threading import Thread, Lock
         'u' - host client replying with sync
 """
 
+# TODO: FIX DA SEQ BUX
+
 MAX_CLIENTS = 4
 
 class Server(PacketManager):
@@ -31,6 +33,7 @@ class Server(PacketManager):
         self.connected_clients = []
         self.num_clients = 0
         self.recent_moves = []
+        self.move_seq = 0
 
         self.rec_moves_lock = Lock()
         self.conn_clients_lock = Lock()
@@ -38,21 +41,9 @@ class Server(PacketManager):
         self.broadcastThread = Thread(target=self._broadcastThreadFun)
         self.broadcastLock = Lock()
 
-        self.con_seqs = {}
-        self.con_seqs_lock = Lock()
 
     def sendMsg(self, msg, to_ip, to_port):
         """ Send a packet """
-        addr_key = "%s%s" % (to_ip, to_port)
-        self.con_seqs_lock.acquire()
-        if addr_key in self.con_seqs:
-            self.con_seqs[addr_key] += 1
-            seq = self.con_seqs[addr_key]
-        else:
-            seq = 0
-            self.con_seqs[addr_key] = seq
-        self.con_seqs_lock.release()
-        msg = "%s>%d" % (msg, seq)
         self.sendPacket(msg, to_ip, to_port)
 
     def receiveMsg(self, data, from_addr):
@@ -72,9 +63,6 @@ class Server(PacketManager):
         """ Overrides the PacketManager unstableConnection.
             Handles an unstable connection as a lost connection """
         addr_key = "%s%s" % (addr[0], addr[1])
-        self.con_seqs_lock.acquire()
-        del self.con_seqs[addr_key]
-        self.con_seqs_lock.release()
         if self.verbose: self.log("unstable client at %s:%s" % (addr[0], addr[1]))
         self.removeClient(addr)
 
@@ -133,7 +121,7 @@ class Server(PacketManager):
             b_msg = "m"
             # if recent moves to send
             if num_recent_moves > 0:
-                moves_str = misc.recentMovesToStringParser(self.recent_moves)
+                moves_str = recentMovesToStringParser(self.recent_moves)
                 b_msg += moves_str
             else:
                 pass # do nothing
@@ -141,7 +129,6 @@ class Server(PacketManager):
             self.sendMsg(b_msg, c_ip, c_port)
         self.conn_clients_lock.release()
         self.rec_moves_lock.release()
-
 
     def handleClientMovesAndAcks(self, data):
         """
@@ -155,9 +142,9 @@ class Server(PacketManager):
         # add new moves
         self.rec_moves_lock.acquire()
         for move in misc.stringToListParser(new_moves):
-            move_new_time = misc.stringToListParser(move, ':')
-            move_new_time[2] = str(misc.timeInMs())
-            self.recent_moves.append((misc.listToStringParser(move_new_time, ':'), 0))
+            move = "%s>%d" % (move, self.move_seq)
+            self.move_seq += 1
+            self.recent_moves.append((move, 0))
         splt_ack_moves = misc.stringToListParser(ack_moves)
 
         # indexes for recent moves to remove
@@ -238,6 +225,11 @@ class Server(PacketManager):
         for i in range(len(self.connected_clients)):
             usr_name, client_ip, client_port = self.connected_clients[i]
             self.sendMsg(msg, client_ip, client_port)
+
+
+def recentMovesToStringParser(recent_moves, seperator=','):
+    moves = [m[0] for m in recent_moves]
+    return ("%s" % seperator).join(moves)
 
 if __name__ == "__main__":
     pass

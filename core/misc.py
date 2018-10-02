@@ -14,10 +14,6 @@ def stringToListParser(string, seperator=','):
         return []
     return string.split(seperator)
 
-def recentMovesToStringParser(recent_moves, seperator=','):
-    moves = [m[0] for m in recent_moves]
-    return ("%s" % seperator).join(moves)
-
 def timeInMs():
     return int(time.time() * 1000)
 

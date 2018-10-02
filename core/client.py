@@ -5,8 +5,6 @@ import misc
 from threading import Lock, Condition
 from packetmanager import PacketManager
 
-STALLED_TOLERANCE = 10
-
 class Client(PacketManager):
     def __init__(self, ip, port, serverIP, serverPort, player, name="Client", logfile=None, verbose=False):
         PacketManager.__init__(self, ip, port, name, logfile=logfile, verbose=verbose)
@@ -16,12 +14,11 @@ class Client(PacketManager):
         self.player = player
         self.game_manager = None
 
-        self.server_seq = -1
-        self.stalled_packets = []
+        self.newest_move_seq = -1
 
         self.logged_in = False
         self.login_lock = Lock()
-        self.login_cond = Condition(self.login_lock) 
+        self.login_cond = Condition(self.login_lock)
 
         self.username = ""
         self.player_number = None
@@ -35,18 +32,9 @@ class Client(PacketManager):
     def sendMsg(self, msg):
         self.sendPacket(msg, self.serverIP, self.serverPort)
 
-    def receiveMsg(self, data, addr, forced=False):
+    def receiveMsg(self, data, addr):
         orig_data = data
         msg_type, data = data[0], data[1:]
-        data_lst = data.split('>')
-        data, seq = data_lst[0].strip(), int(data_lst[1].strip())
-        if not forced:
-            if seq > self.server_seq+1:
-                self.stalled_packets.append((orig_data, addr, seq, 0))
-                return
-            elif seq <= self.server_seq:
-                return
-            self.server_seq = seq
         if msg_type == 'l':
             self.handleLoginResponse(data, addr)
         elif msg_type == 'i':
@@ -58,27 +46,18 @@ class Client(PacketManager):
         elif msg_type == 'm': # new moves
             self.handleNewMovesPacket(data)
 
-        if forced:
-            return
-        for i in range(len(self.stalled_packets)):
-            if self.verbose: self.log("stalling packet")
-            force_handle = self.stalled_packets[i][3] >= STALLED_TOLERANCE
-            if self.stalled_packets[i][2] == self.server_seq+1 or force_handle:
-                stalled_data, from_addr = self.stalled_packets[i][0], self.stalled_packets[i][1]
-                del self.stalled_packets[i]
-                self.receiveMsg(stalled_data, from_addr, force_handle)
-                return
-            else:
-                self.stalled_packets[i] = (self.stalled_packets[i][0], self.stalled_packets[i][1], self.stalled_packets[i][2], self.stalled_packets[i][3] + 1)
-
     def handleNewMovesPacket(self, data):
         ack_moves = []
         if len(data) > 0:
             moves = data.split(',')
             for i in range(len(moves)):
                 if len(moves[i][0]) == 0: continue
-                ack_moves.append(moves[i])
-                self.game_manager.execute_move(moves[i])
+                move_split = moves[i].split('>')
+                move, move_seq = move_split[0], int(move_split[1])
+                if move_seq > self.newest_move_seq:
+                    self.newest_move_seq = move_seq
+                    ack_moves.append(moves[i])
+                    self.game_manager.execute_move(moves[i])
         new_moves = misc.listToStringParser(self.player.get_moves())
         ack_moves = misc.listToStringParser(ack_moves)
         self.sendMsg("a" + ack_moves + ";" + new_moves)
