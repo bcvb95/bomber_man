@@ -179,7 +179,7 @@ class GameManager(object):
                 self.queued_dir_input = (0,0)
             elif self.dir_input != (0,0) and self.move != 'b':
                 self.move = self.dir_input
-            
+
             if self.move: # if the player is making a move
                 move_msg = ""
                 p_i, p_j = self.player_moveable_objects[self.this_player_i].grid_pos
@@ -191,7 +191,7 @@ class GameManager(object):
                     move_msg = 'b'
 
                 if self.move != 'b':
-                    if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) == 0: 
+                    if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) == 0:
                         if self.player_moveable_objects[self.this_player_i].move(self.move) == 0:
                             self.player.make_move(move_msg)
                 if self.move == 'b':
@@ -273,13 +273,13 @@ class GameBoard(object):
             in_bounds = ((new_j < self.size[0] and new_j >= 0) and (new_i < self.size[0] and new_i >= 0))
             if in_bounds:
                 #--- if moving to an empty tile
-                if self.game_grid[new_j][new_i] == 'e': 
-                    if from_ele[0] == 'b': 
+                if self.game_grid[new_j][new_i] == 'e':
+                    if from_ele[0] == 'b':
                         # if moving from a tile with a bomb
                         self.change_tile(from_i, from_j, 'b')
                         self.change_tile(new_i, new_j, from_ele[1])
-                    else:                  
-                        # if moving from an empty tile 
+                    else:
+                        # if moving from an empty tile
                         self.change_tile(from_i, from_j, 'e')
                         self.change_tile(new_i, new_j, from_ele)
                     move_go.grid_pos = (new_i, new_j)
@@ -297,7 +297,7 @@ class GameBoard(object):
 
     def change_tile(self, i, j, new_ele):
         self.game_grid[j][i] = new_ele
-    
+
     def print_grid(self):
         for row in self.game_grid:
             print(row)

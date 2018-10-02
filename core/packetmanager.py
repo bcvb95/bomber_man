@@ -84,7 +84,7 @@ class PacketManager(object):
         """
         Logs message to logfile if it exists, else it prints to stdout.
         """
-        msg = "%s: %s" % (self.name, msg)
+        msg = "%s - %s: %s" % (time.time(), self.name, msg)
         if self.logfile:
             self.logfile.write(msg + "\n")
         else:
