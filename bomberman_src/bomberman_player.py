@@ -16,8 +16,3 @@ class BMPlayer(BasePlayer):
         moves = self.new_moves
         self.new_moves = []
         return moves
-
-    # ----- Required method for BasePlayer ------ #
-    def do_move(self, move):
-        move_list = misc.stringToListParser(move, ':')
-        print("%s do_moves: " % self.username, move_list)

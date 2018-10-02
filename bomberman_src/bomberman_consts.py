@@ -15,10 +15,13 @@ GREEN = Color(0,255,0,1)
 BLUE = Color(0,0,255,1)
 ORANGE = Color(200,200,0,1)
 
+BOMB_TIME = 3
+
 #----- Movable gameobject constants-----#
 STEPSIZE = 3 # Must be int
 MINMOVEFREQ = 0.3
 STEPFREQ = 0.005
+
 KEY_TO_DIR_DICT = {
     K_LEFT:  (-1, 0),
     K_a:     (-1, 0),

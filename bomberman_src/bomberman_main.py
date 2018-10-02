@@ -26,8 +26,8 @@ class GameManager(object):
         self.do_move = False
         self.move = None
 
-        # execute moves
         self.queued_moves = []
+        self.bombs = []
 
         # init pygame and screen
         pygame.init()
@@ -118,12 +118,15 @@ class GameManager(object):
 
 
         for i in range(self.player.client.init_num_players):
+            # init and calc start positions
             move_go = MoveableGameObject(STEPSIZE, PLAYER_IMG_DICT[i+1])
             start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
             start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
-            move_go.grid_pos = (start_i, start_j)
             # update gameboard
-            self.gameboard.change_tile(start_i, start_j, 'p')
+            player_num = str(i+1)
+            self.gameboard.change_tile(start_i, start_j, player_num)
+            # update moveable go
+            move_go.grid_pos = (start_i, start_j)
             move_go.scr_pos = (start_x, start_y)
             move_go.set_pos(start_x, start_y)
             self.player_moveable_objects.append(move_go)
@@ -159,6 +162,8 @@ class GameManager(object):
                     self.move_key_held = event.key
                 elif event.key == K_SPACE:
                     self.move = "b"
+                elif event.key == K_p:
+                    self.gameboard.print_grid()
             elif event.type == pygame.KEYUP:
                 if event.key in KEY_TO_DIR_DICT:
                     if not self.do_move and time.time() - last_move > 0.1 and self.dir_input != move_obj.cur_dir:
@@ -168,28 +173,33 @@ class GameManager(object):
                     self.dir_input = (0,0)
                     self.move_key_held = None
 
-        if self.do_move:
-            if self.queued_dir_input != (0,0):
+        if self.do_move or self.move == 'b':
+            if self.queued_dir_input != (0,0) and self.move != 'b':
                 self.move = self.queued_dir_input
                 self.queued_dir_input = (0,0)
-            elif self.dir_input != (0,0):
+            elif self.dir_input != (0,0) and self.move != 'b':
                 self.move = self.dir_input
-
+            
             if self.move: # if the player is making a move
                 move_msg = ""
+                p_i, p_j = self.player_moveable_objects[self.this_player_i].grid_pos
                 if self.move in DIR_TO_MOVE_DICT:
                     move_msg = DIR_TO_MOVE_DICT[self.move]
                 elif self.move == 'b':
+                    # append bombs to bomb list
+                    self.bombs.append({(p_i, p_j) : misc.timeInMs()})
                     move_msg = 'b'
-                self.player.make_move(move_msg)
-                self.queued_moves.append({"move": DIR_TO_MOVE_DICT[self.move], "pid": self.this_player_i})
 
+                if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) != 1: 
+                    if self.player_moveable_objects[self.this_player_i].move(self.move) != 1:
+                        self.player.make_move(move_msg)
 
     def update(self):
         i = 0
         while i < len(self.queued_moves) and len(self.queued_moves) != 0:
             move, player_id = self.queued_moves[i]["move"], self.queued_moves[i]["pid"]
-            if self.player_moveable_objects[player_id].move(MOVE_TO_DIR_DICT[move]) != 1:
+            if self.player_moveable_objects[player_id].move(move) != 1:
+                self.gameboard.make_move(self.player_moveable_objects[player_id], move)
                 del self.queued_moves[i]
             else:
                 i += 1
@@ -204,10 +214,13 @@ class GameManager(object):
         pygame.display.flip()
 
     def execute_move(self, move):
+        """ Is called from the client, when it recieves a moves that needs to be executed """
         move_list = misc.stringToListParser(move, ':')
         player_id = int(move_list[0][1])
         move = move_list[1]
         if self.this_player_i != player_id-1:
+            if move != 'b':
+                move = MOVE_TO_DIR_DICT[move]
             self.queued_moves.append({"move": move, "pid": player_id-1})
 
 class GameBoard(object):
@@ -217,16 +230,59 @@ class GameBoard(object):
             ['1'-'4']   :   player 1-4
              'b'        :   bomb
              'w'        :   static wall
-             'b'        :   dynamic box
+             'd'        :   dynamic box
     """
 
     def __init__(self, size):
         self.size = size
         # init grid
-        self.game_grid = [['e']*size[1]]*size[0]
+        self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
+
+    def make_move(self, move_go,  move):
+        exit_code = 0
+        from_ele = self.game_grid[move_go.grid_pos[1]][move_go.grid_pos[0]]
+        if move != 'b':
+            # if the move is not a bomb move, try to move player
+            dir = (move[1], move[0]) # direction is swapped arround
+            from_j, from_i = move_go.grid_pos[1], move_go.grid_pos[0]
+            new_j, new_i = from_j + dir[0], from_i + dir[1]
+            in_bounds = ((new_j < self.size[0] and new_j >= 0) and (new_i < self.size[0] and new_i >= 0))
+            if in_bounds:
+                #--- if moving to an empty tile
+                if self.game_grid[new_j][new_i] == 'e': 
+                    if from_ele[0] == 'b': 
+                        # if moving from a tile with a bomb
+                        self.change_tile(from_i, from_j, 'b')
+                        self.change_tile(new_i, new_j, from_ele[1])
+                    else:                  
+                        # if moving from an empty tile 
+                        self.change_tile(from_i, from_j, 'e')
+                        self.change_tile(new_i, new_j, from_ele)
+                    move_go.grid_pos = (new_i, new_j)
+
+                #--- if moving to a tile with bomb ---#
+                elif self.game_grid[new_j][new_i] == 'b': 
+                    if from_ele[0] == 'b': 
+                        # if moving from a tile with a bomb
+                        self.change_tile(from_i, from_j, 'b')
+                        self.change_tile(new_i, new_j, 'b' + from_ele[1])
+                    else:                  
+                        # if moving from an empty tile 
+                        self.change_tile(from_i, from_j, 'e')
+                        self.change_tile(new_i, new_j, 'b' + from_ele)
+                    move_go.grid_pos = (new_i, new_j)
+            else:
+                exit_code = 1
+        else: # if placing a bomb
+            p_j, p_i = move_go.grid_pos[1], move_go.grid_pos[0]
+            if from_ele[0] != 'b': # if there's not a bomb already
+                self.change_tile(p_i, p_j, 'b' + from_ele )
+            else:
+                exit_code = 1
+        return exit_code
 
     def change_tile(self, i, j, new_ele):
-        self.game_grid[i][j] = new_ele
+        self.game_grid[j][i] = new_ele
     
     def print_grid(self):
         for row in self.game_grid:
