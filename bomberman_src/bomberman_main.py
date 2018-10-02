@@ -190,19 +190,26 @@ class GameManager(object):
                     self.bombs.append({(p_i, p_j) : misc.timeInMs()})
                     move_msg = 'b'
 
-                if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) != 1: 
-                    if self.player_moveable_objects[self.this_player_i].move(self.move) != 1:
+                if self.move != 'b':
+                    if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) == 0: 
+                        if self.player_moveable_objects[self.this_player_i].move(self.move) == 0:
+                            self.player.make_move(move_msg)
+                elif self.move == 'b':
+                    if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) == 0:
                         self.player.make_move(move_msg)
 
     def update(self):
         i = 0
         while i < len(self.queued_moves) and len(self.queued_moves) != 0:
             move, player_id = self.queued_moves[i]["move"], self.queued_moves[i]["pid"]
-            if self.player_moveable_objects[player_id].move(move) != 1:
-                self.gameboard.make_move(self.player_moveable_objects[player_id], move)
-                del self.queued_moves[i]
+            if move != 'b':
+                if self.player_moveable_objects[player_id].move(move) != 1:
+                    self.gameboard.make_move(self.player_moveable_objects[player_id], move)
+                    del self.queued_moves[i]
+                else:
+                    i += 1
             else:
-                i += 1
+                self.gameboard.make_move(self.player_moveable_objects[player_id], move)
 
         for move_go in self.player_moveable_objects:
             move_go.update()
@@ -271,6 +278,8 @@ class GameBoard(object):
                         self.change_tile(from_i, from_j, 'e')
                         self.change_tile(new_i, new_j, 'b' + from_ele)
                     move_go.grid_pos = (new_i, new_j)
+                else:
+                    exit_code = 1
             else:
                 exit_code = 1
         else: # if placing a bomb

@@ -30,18 +30,15 @@ class MoveableGameObject(GameObject):
             self.movetowarddest()
 
     def move(self, dir):
-        if dir != 'b':
-            if self.dest:
-                return 1
-            self.movecount = 0
-            self.cur_dir = dir
-            self.dest = ((self.rect.topleft[0]+dir[0]*self.rect.width, \
-                        self.rect.topleft[1]+dir[1]*self.rect.height))
-            self.source = self.rect.topleft
-            return 0
-        else:
-            #PLANT BOMB HERE
-            return 0
+        if self.dest:
+            return 1
+        self.movecount = 0
+        self.cur_dir = dir
+        self.dest = ((self.rect.topleft[0]+dir[0]*self.rect.width, \
+                    self.rect.topleft[1]+dir[1]*self.rect.height))
+        self.source = self.rect.topleft
+        return 0
+        #PLANT BOMB HERE
 
     def movetowarddest(self):
         pos = self.rect.topleft
