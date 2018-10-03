@@ -43,6 +43,18 @@ class GameManager(object):
         self.font_dejavu26 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 26)
         self.font_dejavu14 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 14)
 
+
+        PLAYER_IMG_DICT[1] = pygame.image.load('%s/images/player1_img.png' % RES_PATH).convert_alpha()
+        PLAYER_IMG_DICT[2] = pygame.image.load('%s/images/player2_img.png' % RES_PATH).convert_alpha()
+        PLAYER_IMG_DICT[3] = pygame.image.load('%s/images/player3_img.png' % RES_PATH).convert_alpha()
+        PLAYER_IMG_DICT[4] = pygame.image.load('%s/images/player4_img.png' % RES_PATH).convert_alpha()
+
+        BOMB_IMG = pygame.image.load('%s/images/bomb_img.png' % RES_PATH).convert_alpha()
+
+        GAMEBOARD_TEXTURES["bounding_walls"] = pygame.image.load("%s/images/bounding_walls.png" % RES_PATH).convert_alpha()
+        GAMEBOARD_TEXTURES["static_wall"]    = pygame.image.load("%s/images/static_wall.png" % RES_PATH).convert_alpha()
+        GAMEBOARD_TEXTURES["floor"]          = pygame.image.load("%s/images/floor.png" % RES_PATH).convert_alpha()
+
         client_ip = misc.getMyIP()
         self.player = None
 
@@ -60,7 +72,7 @@ class GameManager(object):
         self.gameboard = GameBoard(GRID_SIZE)
 
         # bomb
-        self.bomb1 = Bomb((5,5))
+        self.bomb1 = Bomb((5,5), BOMB_IMG)
 
 
     def start_game(self):
@@ -363,7 +375,6 @@ class GameBoard(object):
         self.update_bombs(player)
 
     def draw(self, screen):
-        pass
         screen.blit(self.floor_tex, (0,0))
         screen.blit(self.bounding_walls_tex, (0,0))
         for wall in self.static_walls:
