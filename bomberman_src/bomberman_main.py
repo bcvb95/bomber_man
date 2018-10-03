@@ -226,6 +226,8 @@ class GameManager(object):
         for move_go in self.player_moveable_objects:
             move_go.update()
         
+        self.gameboard.update_bombs(self.player)
+        
 
     def draw(self):
         self.screen.fill((200,200,200))
@@ -280,8 +282,6 @@ class GameBoard(object):
             exit_code = 1
         return exit_code
 
-
-
     def make_move(self, move_go, move):
         exit_code = 0
         from_ele = self.game_grid[move_go.grid_pos[1]][move_go.grid_pos[0]]
@@ -326,7 +326,7 @@ class GameBoard(object):
         bombs_to_blow = []
         for i in range(len(self.bombs)):
             bomb = self.bombs[i]
-            if bomb.isGonnaExplode():
+            if bomb.isGonnaExplode(): 
                 bombs_to_blow.append([bomb, i])
 
         for b2b in bombs_to_blow:
