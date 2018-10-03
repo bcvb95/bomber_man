@@ -54,13 +54,16 @@ class GameManager(object):
             4 : pygame.image.load('%s/images/player4_img.png' % res_path).convert_alpha()
         }
 
-        self.bomb_img = pygame.image.load('%s/images/bomb_img.png' % res_path).convert_alpha()
+        bomb_img = pygame.image.load('%s/images/bomb_img.png' % res_path).convert_alpha()
 
-        self.gameboard_textures = {
-            "bounding_walls" : pygame.image.load("%s/images/bounding_walls.png" % res_path).convert_alpha(),
-            "static_wall"    : pygame.image.load("%s/images/static_wall.png" % res_path).convert_alpha(),
-            "floor"          : pygame.image.load("%s/images/floor.png" % res_path).convert_alpha(),
+        gameboard_textures = {
+            "bounding_walls"    : pygame.image.load("%s/images/bounding_walls.png" % res_path).convert_alpha(),
+            "static_wall"       : pygame.image.load("%s/images/static_wall.png" % res_path).convert_alpha(),
+            "floor"             : pygame.image.load("%s/images/floor.png" % res_path).convert_alpha(),
+            "destructable_wall" : pygame.image.load("%s/images/destructable_wall.png" % res_path).convert_alpha(),
         }
+
+        gameboard_layout_tex = pygame.image.load("%s/gameboard/gameboard_layout2.png" % res_path)
 
         client_ip = misc.getMyIP()
         self.player = None
@@ -76,11 +79,7 @@ class GameManager(object):
         self.player.client.game_manager = self
 
         #setup gameboard
-        self.gameboard = GameBoard(GRID_SIZE, self.gameboard_textures, self.bomb_img)
-
-        # bomb
-        self.bomb1 = Bomb((5,5), self.bomb_img)
-
+        self.gameboard = GameBoard(GRID_SIZE, gameboard_textures, bomb_img, gameboard_layout_tex)
 
     def start_game(self):
 
@@ -186,7 +185,7 @@ class GameManager(object):
 
             #---- move specific input ----#
             if event.type == pygame.KEYDOWN:
-                if event.key in KEY_TO_DIR_DICT and not self.move_key_held:
+                if event.key in KEY_TO_DIR_DICT:# and not self.move_key_held:
                     self.dir_input = KEY_TO_DIR_DICT[event.key]
                     self.move_key_held = event.key
                 elif event.key == K_SPACE:
@@ -199,8 +198,9 @@ class GameManager(object):
                         self.queued_dir_input = self.dir_input
                     if self.move:
                         self.queued_dir_input = (0,0)
-                    self.dir_input = (0,0)
-                    self.move_key_held = None
+                    if event.key == self.move_key_held:
+                        self.dir_input = (0,0)
+                        self.move_key_held = None
 
         if self.do_move:
             if self.queued_dir_input != (0,0):
@@ -278,7 +278,7 @@ class GameBoard(object):
              'w'        :   static wall
              'd'        :   dynamic box / destructable
     """
-    def __init__(self, size, board_textures, bomb_tex):
+    def __init__(self, size, board_textures, bomb_tex, layout_tex):
         self.size = size
         # init grid
         self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
@@ -287,18 +287,25 @@ class GameBoard(object):
         self.bounding_walls_tex = board_textures["bounding_walls"]
         self.floor_tex = board_textures["floor"]
         self.static_wall_tex = board_textures["static_wall"]
-
+        self.destructable_wall_tex = board_textures["destructable_wall"]
         self.bomb_tex = bomb_tex
+        self.layout_tex = layout_tex
 
         self.static_walls = []
-        offset = TILE_SIZE
-        for i in range(1, size[0]-1):
-            x = i * TILE_SIZE + offset
-            for j in range(1, size[1]-1):
-                y = j * TILE_SIZE + offset
-                if (i % 2 != 0 and j % 2 != 0):
-                    self.game_grid[i][j] = 'w'
+        self.destructable_walls = []
+
+        # Place walls
+        for i in range(GRID_WIDTH):
+            x = (i+1) * TILE_SIZE
+            for j in range(GRID_HEIGHT):
+                y = (j+1) * TILE_SIZE
+                pixel_col = self.layout_tex.get_at((i,j)).normalize()[:3]
+                if pixel_col == (0,0,0):
                     self.static_walls.append((x,y))
+                    self.game_grid[i][j] = 'w'
+                elif pixel_col == (1, 0, 0):
+                    self.destructable_walls.append((x,y))
+                    self.game_grid[i][j] = 'd'
 
     def change_tile(self, i, j, new_ele):
         self.game_grid[j][i] = new_ele
@@ -386,8 +393,10 @@ class GameBoard(object):
     def draw(self, screen):
         screen.blit(self.floor_tex, (0,0))
         screen.blit(self.bounding_walls_tex, (0,0))
-        for wall in self.static_walls:
-            screen.blit(self.static_wall_tex, wall)
+        for static_wall in self.static_walls:
+            screen.blit(self.static_wall_tex, static_wall)
+        for destructable_wall in self.destructable_walls:
+            screen.blit(self.destructable_wall_tex, destructable_wall)
         for bomb in self.bombs:
             bomb.draw(screen)
 

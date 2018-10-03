@@ -43,11 +43,7 @@ class MoveableGameObject(GameObject):
     def movetowarddest(self):
         pos = self.rect.topleft
         self.movecount += 1
-        minX = min(self.dest[0], pos[0])
-        maxX = max(self.dest[0], pos[0])
-        minY = min(self.dest[1], pos[1])
-        maxY = max(self.dest[1], pos[1])
-        if (maxX - minX) + (maxY - minY) <= self.step_size: # CHANGE HERE
+        if (max(self.dest[0], pos[0]) - min(self.dest[0], pos[0])) + (max(self.dest[1], pos[1]) - min(self.dest[1], pos[1])) <= self.step_size:
             self.rect.topleft = self.dest
             self.dest = None
             self.cur_dir = (0,0)
