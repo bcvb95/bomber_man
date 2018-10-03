@@ -58,6 +58,8 @@ PLAYER_IMG_DICT= {
     4 : pygame.image.load('%s/images/player4_img.png' % res_path)
 }
 
+BOMB_IMG = pygame.image.load('%s/images/bomb_img.png' % res_path)
+
 GAMEBOARD_TEXTURES = {
     "bounding_walls" : pygame.image.load("%s/images/bounding_walls.png" % res_path),
     "static_wall"    : pygame.image.load("%s/images/static_wall.png" % res_path),
