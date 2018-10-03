@@ -36,6 +36,7 @@ class GameManager(object):
         # init pygame and screen
         pygame.init()
         pygame.display.set_caption("Bomberman Pygame-edition")
+        pygame.display.set_caption("BOMBERMAN - User: " + self.username)
         self.screen = pygame.display.set_mode(SCREEN_SIZE)
 
         # load fonts
@@ -74,6 +75,7 @@ class GameManager(object):
         else:
             self.player.client.logIn()
 
+ 
         # add gameboard reference to client
         self.player.client.game_manager = self
 
@@ -176,7 +178,6 @@ class GameManager(object):
             self.update()
             self.draw()
             self.clock.tick(60)
-            pygame.display.set_caption(str(self.clock.get_fps()))
 
     def handle_input(self):
         move_obj = self.player_moveable_objects[self.this_player_i]
