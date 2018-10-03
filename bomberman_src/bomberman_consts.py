@@ -19,9 +19,9 @@ ORANGE = Color(200,200,0,1)
 BOMB_TIME = 5
 
 #----- Movable gameobject constants-----#
-STEPSIZE = 3 # Must be int
+STEPSIZE = 4 # Must be int
 MINMOVEFREQ = 0.3
-STEPFREQ = 0.005
+STEPFREQ = 0.001
 
 KEY_TO_DIR_DICT = {
     K_LEFT:  (-1, 0),
@@ -50,18 +50,7 @@ MOVE_TO_DIR_DICT = {
 
 
 #------ RESOURCES ------#
-res_path = "%s/res" % os.path.dirname(os.path.realpath(__file__))
-PLAYER_IMG_DICT= {
-    1 : pygame.image.load('%s/images/player1_img.png' % res_path),
-    2 : pygame.image.load('%s/images/player2_img.png' % res_path),
-    3 : pygame.image.load('%s/images/player3_img.png' % res_path),
-    4 : pygame.image.load('%s/images/player4_img.png' % res_path)
-}
-
-BOMB_IMG = pygame.image.load('%s/images/bomb_img.png' % res_path)
-
-GAMEBOARD_TEXTURES = {
-    "bounding_walls" : pygame.image.load("%s/images/bounding_walls.png" % res_path),
-    "static_wall"    : pygame.image.load("%s/images/static_wall.png" % res_path),
-    "floor"          : pygame.image.load("%s/images/floor.png" % res_path),
-}
+RES_PATH = "%s/res" % os.path.dirname(os.path.realpath(__file__))
+PLAYER_IMG_DICT= {}
+BOMB_IMG = None
+GAMEBOARD_TEXTURES = {}

@@ -5,8 +5,8 @@ from bomberman_consts import *
 from gameobject import GameObject
 
 class Bomb(GameObject):
-    def __init__(self, grid_pos):
-        GameObject.__init__(self, BOMB_IMG)
+    def __init__(self, grid_pos, tex):
+        GameObject.__init__(self, tex)
 
         self.grid_pos = grid_pos
         self.time_placed = time.time()
@@ -21,5 +21,5 @@ class Bomb(GameObject):
         else:
             return False
 
-    
+
 
