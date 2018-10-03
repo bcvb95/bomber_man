@@ -146,7 +146,7 @@ class GameManager(object):
             self.update()
             self.draw()
             self.clock.tick(60)
-
+            pygame.display.set_caption(str(self.clock.get_fps()))
 
     def handle_input(self):
         move_obj = self.player_moveable_objects[self.this_player_i]
