@@ -1,5 +1,6 @@
 import pygame
 from pygame.locals import *
+import os
 
 SCREEN_SIZE = SCREEN_WIDTH, SCREEN_HEIGHT = 900,900
 GRID_SIZE = GRID_WIDTH, GRID_HEIGHT = 13,13
@@ -49,11 +50,16 @@ MOVE_TO_DIR_DICT = {
 
 
 #------ RESOURCES ------#
+res_path = "%s/res" % os.path.dirname(os.path.realpath(__file__))
+PLAYER_IMG_DICT= {
+    1 : pygame.image.load('%s/images/player1_img.png' % res_path),
+    2 : pygame.image.load('%s/images/player2_img.png' % res_path),
+    3 : pygame.image.load('%s/images/player3_img.png' % res_path),
+    4 : pygame.image.load('%s/images/player4_img.png' % res_path)
+}
 
-PLAYER_IMG_DICT= { 1 : pygame.image.load('bomberman_src/res/images/player1_img.png'),
-                   2 : pygame.image.load('bomberman_src/res/images/player2_img.png'),
-                   3 : pygame.image.load('bomberman_src/res/images/player3_img.png'),
-                   4 : pygame.image.load('bomberman_src/res/images/player4_img.png')
-                 }
-
-
+GAMEBOARD_TEXTURES = {
+    "bounding_walls" : pygame.image.load("%s/images/bounding_walls.png" % res_path),
+    "static_wall"    : pygame.image.load("%s/images/static_wall.png" % res_path),
+    "floor"          : pygame.image.load("%s/images/floor.png" % res_path),
+}

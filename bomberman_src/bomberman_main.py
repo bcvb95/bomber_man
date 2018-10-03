@@ -176,7 +176,7 @@ class GameManager(object):
                     self.dir_input = (0,0)
                     self.move_key_held = None
 
-        if self.do_move: 
+        if self.do_move:
             if self.queued_dir_input != (0,0):
                 self.move = self.queued_dir_input
                 self.queued_dir_input = (0,0)
@@ -215,19 +215,20 @@ class GameManager(object):
             elif move[0] == 'B':
                 move = move[1:]
                 bomb_pos = move.split('/')
-                self.gameboard.change_tile(int(bomb_pos[0]), int(bomb_pos[1]), 'e') 
+                self.gameboard.change_tile(int(bomb_pos[0]), int(bomb_pos[1]), 'e')
                 del self.queued_moves[i]
             # Bomb destroying here
 
         for move_go in self.player_moveable_objects:
             move_go.update()
-        
+
         self.update_bombs()
 
     def draw(self):
         self.screen.fill((200,200,200))
         for move_object in self.player_moveable_objects:
             move_object.draw(self.screen)
+        self.gameboard.draw(self.screen)
         pygame.display.flip()
 
     def execute_move(self, move):
@@ -252,7 +253,7 @@ class GameManager(object):
             i,j = b2b[0][0], b2b[0][1]
             self.gameboard.change_tile( i, j, 'e')
             move = "B%d/%d" % (i, j)
-            self.player.make_move(move) 
+            self.player.make_move(move)
             del self.bombs[b2b[1]]   # delete bomb from bomb list
 
 
@@ -263,13 +264,26 @@ class GameBoard(object):
             ['1'-'4']   :   player 1-4
              'b'        :   bomb
              'w'        :   static wall
-             'd'        :   dynamic box
+             'd'        :   dynamic box / destructable
     """
-
     def __init__(self, size):
         self.size = size
         # init grid
         self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
+
+        self.bounding_walls_tex = GAMEBOARD_TEXTURES["bounding_walls"]
+        self.floor = GAMEBOARD_TEXTURES["floor"]
+        self.static_wall_tex = GAMEBOARD_TEXTURES["static_wall"]
+
+        self.static_walls = []
+        offset = TILE_SIZE
+        for i in range(1, size[0]-1):
+            x = i * TILE_SIZE + offset
+            for j in range(1, size[1]-1):
+                y = j * TILE_SIZE + offset
+                if (i % 2 != 0 and j % 2 != 0):
+                    self.game_grid[i][j] = 'w'
+                    self.static_walls.append((x,y))
 
     def make_move(self, move_go, move):
         exit_code = 0
@@ -307,7 +321,6 @@ class GameBoard(object):
             exit_code = 1
         return exit_code
 
-
     def change_tile(self, i, j, new_ele):
         self.game_grid[j][i] = new_ele
 
@@ -315,6 +328,12 @@ class GameBoard(object):
         for row in self.game_grid:
             print(row)
         print('\n')
+
+    def draw(self, screen):
+        screen.blit(self.floor_tex, (0,0))
+        screen.blit(self.bounding_walls_tex, (0,0))
+        for wall in self.static_walls:
+            screen.blit(self.static_wall_tex, wall)
 
 def main(username, client_port, server_ip, server_port, is_server):
     gameManager = GameManager(username, client_port, server_ip, server_port, is_server)
