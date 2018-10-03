@@ -44,16 +44,23 @@ class GameManager(object):
         self.font_dejavu14 = pygame.font.SysFont("res/fonts/dejavu_thin.ttf", 14)
 
 
-        PLAYER_IMG_DICT[1] = pygame.image.load('%s/images/player1_img.png' % RES_PATH).convert_alpha()
-        PLAYER_IMG_DICT[2] = pygame.image.load('%s/images/player2_img.png' % RES_PATH).convert_alpha()
-        PLAYER_IMG_DICT[3] = pygame.image.load('%s/images/player3_img.png' % RES_PATH).convert_alpha()
-        PLAYER_IMG_DICT[4] = pygame.image.load('%s/images/player4_img.png' % RES_PATH).convert_alpha()
 
-        BOMB_IMG = pygame.image.load('%s/images/bomb_img.png' % RES_PATH).convert_alpha()
+        #------ RESOURCES ------#
+        res_path = "%s/res" % os.path.dirname(os.path.realpath(__file__))
+        self.player_img_dict = {
+            1 : pygame.image.load('%s/images/player1_img.png' % res_path).convert_alpha(),
+            2 : pygame.image.load('%s/images/player2_img.png' % res_path).convert_alpha(),
+            3 : pygame.image.load('%s/images/player3_img.png' % res_path).convert_alpha(),
+            4 : pygame.image.load('%s/images/player4_img.png' % res_path).convert_alpha()
+        }
 
-        GAMEBOARD_TEXTURES["bounding_walls"] = pygame.image.load("%s/images/bounding_walls.png" % RES_PATH).convert_alpha()
-        GAMEBOARD_TEXTURES["static_wall"]    = pygame.image.load("%s/images/static_wall.png" % RES_PATH).convert_alpha()
-        GAMEBOARD_TEXTURES["floor"]          = pygame.image.load("%s/images/floor.png" % RES_PATH).convert_alpha()
+        self.bomb_img = pygame.image.load('%s/images/bomb_img.png' % res_path).convert_alpha()
+
+        self.gameboard_textures = {
+            "bounding_walls" : pygame.image.load("%s/images/bounding_walls.png" % res_path).convert_alpha(),
+            "static_wall"    : pygame.image.load("%s/images/static_wall.png" % res_path).convert_alpha(),
+            "floor"          : pygame.image.load("%s/images/floor.png" % res_path).convert_alpha(),
+        }
 
         client_ip = misc.getMyIP()
         self.player = None
@@ -69,10 +76,10 @@ class GameManager(object):
         self.player.client.game_manager = self
 
         #setup gameboard
-        self.gameboard = GameBoard(GRID_SIZE)
+        self.gameboard = GameBoard(GRID_SIZE, self.gameboard_textures, self.bomb_img)
 
         # bomb
-        self.bomb1 = Bomb((5,5), BOMB_IMG)
+        self.bomb1 = Bomb((5,5), self.bomb_img)
 
 
     def start_game(self):
@@ -137,7 +144,7 @@ class GameManager(object):
 
         for i in range(self.player.client.init_num_players):
             # init and calc start positions
-            move_go = MoveableGameObject(STEPSIZE, PLAYER_IMG_DICT[i+1])
+            move_go = MoveableGameObject(STEPSIZE, self.player_img_dict[i+1])
             start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
             start_x, start_y = (TILE_SIZE+ start_i*TILE_SIZE),  (TILE_SIZE + start_j*TILE_SIZE)
             # update gameboard
@@ -271,15 +278,17 @@ class GameBoard(object):
              'w'        :   static wall
              'd'        :   dynamic box / destructable
     """
-    def __init__(self, size):
+    def __init__(self, size, board_textures, bomb_tex):
         self.size = size
         # init grid
         self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
         self.bombs = []
 
-        self.bounding_walls_tex = GAMEBOARD_TEXTURES["bounding_walls"]
-        self.floor_tex = GAMEBOARD_TEXTURES["floor"]
-        self.static_wall_tex = GAMEBOARD_TEXTURES["static_wall"]
+        self.bounding_walls_tex = board_textures["bounding_walls"]
+        self.floor_tex = board_textures["floor"]
+        self.static_wall_tex = board_textures["static_wall"]
+
+        self.bomb_tex = bomb_tex
 
         self.static_walls = []
         offset = TILE_SIZE
@@ -349,7 +358,7 @@ class GameBoard(object):
         return exit_code
 
     def add_bomb(self, grid_pos):
-        new_bomb = Bomb(grid_pos)
+        new_bomb = Bomb(grid_pos, self.bomb_tex)
         self.bombs.append(new_bomb)
 
     def update_bombs(self, player):
