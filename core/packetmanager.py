@@ -13,20 +13,6 @@ WORKER_THREADS = 8
 MAX_PACK_SIZE = 4096
 STABLE_CON_TOLERANCE = 5
 
-# TODO:
-# - Handle too big packets
-
-# Changelog
-# - Interface changes:
-#   * Subclasses should now call sendPacket when they want to send packets.
-#   * The packet manager can have a custom name for debugging
-#   * Verbose mode - Get a lot of output
-#   * Log file - If you specify a logfile output is redirected there.
-#   * No longer requires 'multiple_cons' arg
-# - Backend changes:
-#   * Resend packets that are not acknowledged after some time
-#   * Don't accept packets that have been seen before by checking sequence numbers
-
 class PacketManager(object):
     def __init__(self, ip, port, name="packetManager", verbose=False, logfile=None):
         # debug
@@ -147,7 +133,6 @@ class PacketManager(object):
         if self.verbose: self.log("sending packet: [data='%s', ip='%s', port='%s', seq='%s']" % (data, ip, port, seq))
         self.sock.sendto(data.encode(), (ip, port))
         if not ack:
-            # Unacknowledged packet: (data, seq, last_resend, addr, resend_count)
             unack_pack = {"data": ori_data, "seq": "%d" % seq, "last_resend": time.time(), "addr": (ip, port), "resend_count": 0}
             if addr_key in self.unacknowledged_packets:
                 self.unacknowledged_packets[addr_key].append(unack_pack)
@@ -332,7 +317,6 @@ class PacketManager(object):
         for addr_key in self.unacknowledged_packets:
             i = 0
             while i < len(self.unacknowledged_packets[addr_key]):
-                # Unacknowledged packet: (data, seq, last_resend, addr)
                 packet = self.unacknowledged_packets[addr_key][i]
                 if now - packet["last_resend"] > RESEND_TIME:
                     if self.verbose: self.log("resending packet with sequence number %s" % packet["seq"])

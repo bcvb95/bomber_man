@@ -20,6 +20,8 @@ class GameManager(object):
         self.server_port = server_port
         self.is_server = is_server
 
+        self.clock = pygame.time.Clock()
+
         # input
         self.queued_dir_input = (0,0)
         self.dir_input = (0,0)
@@ -143,6 +145,8 @@ class GameManager(object):
             self.handle_input()
             self.update()
             self.draw()
+            self.clock.tick(60)
+
 
     def handle_input(self):
         move_obj = self.player_moveable_objects[self.this_player_i]
@@ -226,11 +230,11 @@ class GameManager(object):
         for move_go in self.player_moveable_objects:
             move_go.update()
 
-        self.gameboard.update_bombs(self.player)
+        self.gameboard.update(self.player)
 
 
     def draw(self):
-        #self.screen.fill((200,200,200))
+        self.screen.fill((200,200,200))
         self.gameboard.draw(self.screen)
         for move_object in self.player_moveable_objects:
             move_object.draw(self.screen)
@@ -355,11 +359,17 @@ class GameBoard(object):
             print(row)
         print('\n')
 
+    def update(self, player):
+        self.update_bombs(player)
+
     def draw(self, screen):
+        pass
         screen.blit(self.floor_tex, (0,0))
         screen.blit(self.bounding_walls_tex, (0,0))
         for wall in self.static_walls:
             screen.blit(self.static_wall_tex, wall)
+        for bomb in self.bombs:
+            bomb.draw(screen)
 
 def main(username, client_port, server_ip, server_port, is_server):
     gameManager = GameManager(username, client_port, server_ip, server_port, is_server)
