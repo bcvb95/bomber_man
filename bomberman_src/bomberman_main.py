@@ -226,6 +226,8 @@ class GameManager(object):
         for move_go in self.player_moveable_objects:
             move_go.update()
 
+        self.gameboard.update_bombs(self.player)
+
 
     def draw(self):
         #self.screen.fill((200,200,200))

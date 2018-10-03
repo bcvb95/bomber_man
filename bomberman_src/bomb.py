@@ -16,7 +16,10 @@ class Bomb(GameObject):
         self.set_pos(scr_x, scr_y)
 
     def isGonnaExplode(self):
-        True if (time.time() - self.time_placed) > BOMB_TIME else False
-            
+        if (time.time() - self.time_placed) > BOMB_TIME:
+            return True
+        else:
+            return False
+
     
 
