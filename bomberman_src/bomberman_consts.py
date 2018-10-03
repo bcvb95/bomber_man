@@ -56,4 +56,4 @@ PLAYER_IMG_DICT= { 1 : pygame.image.load('bomberman_src/res/images/player1_img.p
                    4 : pygame.image.load('bomberman_src/res/images/player4_img.png')
                  }
 
-
+BOMB_IMG = pygame.image.load('bomberman_src/res/images/bomb_img.png')

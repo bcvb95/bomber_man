@@ -10,6 +10,7 @@ from pygame.locals import *
 from bomberman_consts import *
 from bomberman_player import BMPlayer
 from movable_gameobject import MoveableGameObject
+from bomb import Bomb
 
 class GameManager(object):
     def __init__(self, username, client_port, server_ip, server_port, is_server):
@@ -28,7 +29,6 @@ class GameManager(object):
         self.bomb = False
 
         self.queued_moves = []
-        self.bombs = []
 
         # init pygame and screen
         pygame.init()
@@ -56,6 +56,9 @@ class GameManager(object):
 
         #setup gameboard
         self.gameboard = GameBoard(GRID_SIZE)
+
+        # bomb
+        self.bomb1 = Bomb((5,5))
 
 
     def start_game(self):
@@ -188,13 +191,14 @@ class GameManager(object):
                 p_i, p_j = self.player_moveable_objects[self.this_player_i].grid_pos
                 move_msg += DIR_TO_MOVE_DICT[self.move]
 
-                if self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move) == 0:
+                if self.gameboard.check_move(self.player_moveable_objects[self.this_player_i], self.move) == 0:
                     if self.player_moveable_objects[self.this_player_i].move(self.move) == 0:
+                        self.gameboard.make_move(self.player_moveable_objects[self.this_player_i], self.move)
                         self.player.make_move(move_msg)
         if self.bomb:
             if self.gameboard.place_bomb(self.player_moveable_objects[self.this_player_i]) != 1:
                 p_i, p_j = self.player_moveable_objects[self.this_player_i].grid_pos
-                self.bombs.append([ (p_i, p_j), time.time() ])
+                self.gameboard.add_bomb((p_i, p_j))
                 self.player.make_move('b')
 
 
@@ -211,18 +215,17 @@ class GameManager(object):
                     i += 1
             elif move[0] == 'b':
                 self.gameboard.place_bomb(self.player_moveable_objects[player_id])
+                self.gameboard.add_bomb(self.player_moveable_objects[self.this_player_i].grid_pos)
                 del self.queued_moves[i]
             elif move[0] == 'B':
                 move = move[1:]
                 bomb_pos = move.split('/')
                 self.gameboard.change_tile(int(bomb_pos[0]), int(bomb_pos[1]), 'e') 
                 del self.queued_moves[i]
-            # Bomb destroying here
 
         for move_go in self.player_moveable_objects:
             move_go.update()
         
-        self.update_bombs()
 
     def draw(self):
         self.screen.fill((200,200,200))
@@ -240,22 +243,6 @@ class GameManager(object):
                 move = MOVE_TO_DIR_DICT[move]
             self.queued_moves.append({"move": move, "pid": player_id-1})
 
-    def update_bombs(self):
-        ts = time.time()
-        bombs_to_blow = []
-        for i in range(len(self.bombs)):
-            bomb = self.bombs[i]
-            if (ts - bomb[1]) > BOMB_TIME:
-                bombs_to_blow.append([bomb[0], i])
-
-        for b2b in bombs_to_blow:
-            i,j = b2b[0][0], b2b[0][1]
-            self.gameboard.change_tile( i, j, 'e')
-            move = "B%d/%d" % (i, j)
-            self.player.make_move(move) 
-            del self.bombs[b2b[1]]   # delete bomb from bomb list
-
-
 class GameBoard(object):
     """
         Has a grid containing elements of the game.
@@ -270,6 +257,30 @@ class GameBoard(object):
         self.size = size
         # init grid
         self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
+        self.bombs = []
+
+    def change_tile(self, i, j, new_ele):
+        self.game_grid[j][i] = new_ele
+
+    def check_move(self, move_go, move):
+        exit_code = 0
+        from_ele = self.game_grid[move_go.grid_pos[1]][move_go.grid_pos[0]]
+        # if the move is not a bomb move, try to move player
+        dir = (move[1], move[0]) # direction is swapped arround
+        from_j, from_i = move_go.grid_pos[1], move_go.grid_pos[0]
+        new_j, new_i = from_j + dir[0], from_i + dir[1]
+        in_bounds = ((new_j < self.size[0] and new_j >= 0) and (new_i < self.size[0] and new_i >= 0))
+        if in_bounds:
+            #--- if moving to an empty tile
+            if self.game_grid[new_j][new_i] == 'e':
+                return 0
+            else:
+                exit_code = 1
+        else:
+            exit_code = 1
+        return exit_code
+
+
 
     def make_move(self, move_go, move):
         exit_code = 0
@@ -306,10 +317,24 @@ class GameBoard(object):
         else:
             exit_code = 1
         return exit_code
+    
+    def add_bomb(self, grid_pos):
+        new_bomb = Bomb(grid_pos)
+        self.bombs.append(new_bomb)
 
+    def update_bombs(self, player):
+        bombs_to_blow = []
+        for i in range(len(self.bombs)):
+            bomb = self.bombs[i]
+            if bomb.isGonnaExplode():
+                bombs_to_blow.append([bomb, i])
 
-    def change_tile(self, i, j, new_ele):
-        self.game_grid[j][i] = new_ele
+        for b2b in bombs_to_blow:
+            i,j = b2b[0].grid_pos[0], b2b[0].grid_pos[1]
+            self.change_tile( i, j, 'e')
+            move = "B%d/%d" % (i, j)
+            player.make_move(move) 
+            del self.bombs[b2b[1]]   # delete bomb from bomb list
 
     def print_grid(self):
         for row in self.game_grid:
