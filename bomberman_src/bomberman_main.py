@@ -238,7 +238,7 @@ class GameManager(object):
                     i += 1
             elif move[0] == 'b':
                 self.gameboard.place_bomb(self.player_moveable_objects[player_id])
-                self.gameboard.add_bomb(self.player_moveable_objects[self.this_player_i].grid_pos)
+                self.gameboard.add_bomb(self.player_moveable_objects[player_id].grid_pos)
                 del self.queued_moves[i]
             elif move[0] == 'B':
                 move = move[1:]
