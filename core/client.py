@@ -98,8 +98,8 @@ class Client(PacketManager):
 
     def handleInitGame(self, data):
         self.init_game_lock.acquire()
+        self.player.init_game(data)
         self.init_game = True
-        self.init_num_players = int(data[-1])
         self.init_game_lock.release()
 
     def doInitGame(self):

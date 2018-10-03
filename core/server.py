@@ -220,8 +220,8 @@ class Server(PacketManager):
         # send login-response to client
         self.sendMsg(reply, from_ip, from_port)
 
-    def sendInitGame(self):
-        msg = 'i/' + str(len(self.connected_clients))
+    def sendInitGame(self, extra_msg=""):
+        msg = 'i/' + str(len(self.connected_clients)) + "/%s" % extra_msg
         for i in range(len(self.connected_clients)):
             usr_name, client_ip, client_port = self.connected_clients[i]
             self.sendMsg(msg, client_ip, client_port)

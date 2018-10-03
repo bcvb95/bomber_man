@@ -24,11 +24,12 @@ if __name__ == "__main__":
     argparser.add_argument("--serv_ip", dest="server_ip", help="Server ip address.", required=True)
     argparser.add_argument("--serv_port", dest="server_port", type=int, help="Server port", required=True)
     argparser.add_argument("--is_server", dest="is_server", action="store_true", default=False, help="Make the player a server")
+    argparser.add_argument("--board_layout", dest="board_layout", type=int, default=1, choices=[0,1], help="Board layout { 0: Empty board | 1: Standard layout. }")
     args = argparser.parse_args()
 
     import bomberman_main
 
-    bomberman_main.main(args.username, args.port, args.server_ip, args.server_port, args.is_server)
+    bomberman_main.main(args.username, args.port, args.server_ip, args.server_port, args.is_server, args.board_layout)
 
 """
     try:

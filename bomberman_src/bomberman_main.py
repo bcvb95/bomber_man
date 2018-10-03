@@ -10,10 +10,11 @@ from pygame.locals import *
 from bomberman_consts import *
 from bomberman_player import BMPlayer
 from movable_gameobject import MoveableGameObject
+from gameboard import GameBoard
 from bomb import Bomb
 
 class GameManager(object):
-    def __init__(self, username, client_port, server_ip, server_port, is_server):
+    def __init__(self, username, client_port, server_ip, server_port, is_server, layout=0):
         self.username = username
         self.client_port = client_port
         self.server_ip = server_ip
@@ -46,24 +47,22 @@ class GameManager(object):
 
 
         #------ RESOURCES ------#
-        res_path = "%s/res" % os.path.dirname(os.path.realpath(__file__))
+        self.res_path = "%s/res" % os.path.dirname(os.path.realpath(__file__))
         self.player_img_dict = {
-            1 : pygame.image.load('%s/images/player1_img.png' % res_path).convert_alpha(),
-            2 : pygame.image.load('%s/images/player2_img.png' % res_path).convert_alpha(),
-            3 : pygame.image.load('%s/images/player3_img.png' % res_path).convert_alpha(),
-            4 : pygame.image.load('%s/images/player4_img.png' % res_path).convert_alpha()
+            1 : pygame.image.load('%s/images/player1_img.png' % self.res_path).convert_alpha(),
+            2 : pygame.image.load('%s/images/player2_img.png' % self.res_path).convert_alpha(),
+            3 : pygame.image.load('%s/images/player3_img.png' % self.res_path).convert_alpha(),
+            4 : pygame.image.load('%s/images/player4_img.png' % self.res_path).convert_alpha()
         }
 
-        bomb_img = pygame.image.load('%s/images/bomb_img.png' % res_path).convert_alpha()
+        bomb_img = pygame.image.load('%s/images/bomb_img.png' % self.res_path).convert_alpha()
 
         gameboard_textures = {
-            "bounding_walls"    : pygame.image.load("%s/images/bounding_walls.png" % res_path).convert_alpha(),
-            "static_wall"       : pygame.image.load("%s/images/static_wall.png" % res_path).convert_alpha(),
-            "floor"             : pygame.image.load("%s/images/floor.png" % res_path).convert_alpha(),
-            "destructable_wall" : pygame.image.load("%s/images/destructable_wall.png" % res_path).convert_alpha(),
+            "bounding_walls"    : pygame.image.load("%s/images/bounding_walls.png" % self.res_path).convert_alpha(),
+            "static_wall"       : pygame.image.load("%s/images/static_wall.png" % self.res_path).convert_alpha(),
+            "floor"             : pygame.image.load("%s/images/floor.png" % self.res_path).convert_alpha(),
+            "destructable_wall" : pygame.image.load("%s/images/destructable_wall.png" % self.res_path).convert_alpha(),
         }
-
-        gameboard_layout_tex = pygame.image.load("%s/gameboard/gameboard_layout2.png" % res_path)
 
         client_ip = misc.getMyIP()
         self.player = None
@@ -79,7 +78,18 @@ class GameManager(object):
         self.player.client.game_manager = self
 
         #setup gameboard
-        self.gameboard = GameBoard(GRID_SIZE, gameboard_textures, bomb_img, gameboard_layout_tex)
+        self.layout = layout
+        self.gameboard = GameBoard(GRID_SIZE, gameboard_textures, bomb_img)
+        self.gameboard_layout_tex = None
+        if is_server:
+            self.load_layout(self.layout)
+
+    def load_layout(self, layout):
+        if layout == 0:   layout_tex_path = "%s/gameboard/gameboard_layout_empty.png" % self.res_path
+        elif layout == 1: layout_tex_path = "%s/gameboard/gameboard_layout1.png" % self.res_path
+        else: sys.exit("Unknown layout.")
+        self.gameboard_layout_tex = pygame.image.load(layout_tex_path)
+        self.gameboard.set_layout(self.gameboard_layout_tex)
 
     def start_game(self):
 
@@ -103,8 +113,7 @@ class GameManager(object):
 
                 for event in pygame.event.get():
                     if (event.type == KEYDOWN and event.key == K_s) or num_connected == 4:
-
-                        self.player.server.sendInitGame()
+                        self.player.server.sendInitGame("%d" % self.layout)
                         start_game = True
 
                 # Draw server waiting screen
@@ -136,12 +145,15 @@ class GameManager(object):
 
             pygame.display.flip()
 
+        if not self.is_server:
+            self.load_layout(self.player.layout)
+
         # list for holding all players movable object
         self.player_moveable_objects = []
         self.this_player_i = self.player.client.player_number-1
 
 
-        for i in range(self.player.client.init_num_players):
+        for i in range(self.player.init_num_players):
             # init and calc start positions
             move_go = MoveableGameObject(STEPSIZE, self.player_img_dict[i+1])
             start_i, start_j =PLAYER_START_IDX_POSITIONS[i]
@@ -267,162 +279,6 @@ class GameManager(object):
                 move = MOVE_TO_DIR_DICT[move]
             self.queued_moves.append({"move": move, "pid": player_id-1})
 
-class GameBoard(object):
-    """
-        Has a grid containing elements of the game.
-             'e'        :   empty tile
-            ['1'-'4']   :   player 1-4
-             'b'        :   bomb
-             'w'        :   static wall
-             'd'        :   dynamic box / destructable
-    """
-    def __init__(self, size, board_textures, bomb_tex, layout_tex):
-        self.size = size
-        # init grid
-        self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
-        self.bombs = []
-
-        self.bounding_walls_tex = board_textures["bounding_walls"]
-        self.floor_tex = board_textures["floor"]
-        self.static_wall_tex = board_textures["static_wall"]
-        self.destructable_wall_tex = board_textures["destructable_wall"]
-        self.bomb_tex = bomb_tex
-        self.layout_tex = layout_tex
-
-        self.static_walls = []
-        self.destructable_walls = []
-
-        # Place walls
-        for i in range(GRID_WIDTH):
-            x = (i+1) * TILE_SIZE
-            for j in range(GRID_HEIGHT):
-                y = (j+1) * TILE_SIZE
-                pixel_col = self.layout_tex.get_at((i,j)).normalize()[:3]
-                if pixel_col == (0,0,0):
-                    self.static_walls.append((x,y))
-                    self.game_grid[i][j] = 'w'
-                elif pixel_col == (1, 0, 0):
-                    self.destructable_walls.append((x,y))
-                    self.game_grid[i][j] = 'd'
-
-    def change_tile(self, i, j, new_ele):
-        self.game_grid[j][i] = new_ele
-
-    def check_move(self, move_go, move):
-        exit_code = 0
-        from_ele = self.game_grid[move_go.grid_pos[1]][move_go.grid_pos[0]]
-        # if the move is not a bomb move, try to move player
-        dir = (move[1], move[0]) # direction is swapped arround
-        from_j, from_i = move_go.grid_pos[1], move_go.grid_pos[0]
-        new_j, new_i = from_j + dir[0], from_i + dir[1]
-        in_bounds = ((new_j < self.size[0] and new_j >= 0) and (new_i < self.size[0] and new_i >= 0))
-        if in_bounds:
-            #--- if moving to an empty tile
-            if self.game_grid[new_j][new_i] == 'e':
-                return 0
-            else:
-                exit_code = 1
-        else:
-            exit_code = 1
-        return exit_code
-
-    def make_move(self, move_go, move):
-        exit_code = 0
-        from_ele = self.game_grid[move_go.grid_pos[1]][move_go.grid_pos[0]]
-        # if the move is not a bomb move, try to move player
-        dir = (move[1], move[0]) # direction is swapped arround
-        from_j, from_i = move_go.grid_pos[1], move_go.grid_pos[0]
-        new_j, new_i = from_j + dir[0], from_i + dir[1]
-        in_bounds = ((new_j < self.size[0] and new_j >= 0) and (new_i < self.size[0] and new_i >= 0))
-        if in_bounds:
-            #--- if moving to an empty tile
-            if self.game_grid[new_j][new_i] == 'e':
-                if from_ele[0] == 'b':
-                    # if moving from a tile with a bomb
-                    self.change_tile(from_i, from_j, 'b')
-                    self.change_tile(new_i, new_j, from_ele[1])
-                else:
-                    # if moving from an empty tile
-                    self.change_tile(from_i, from_j, 'e')
-                    self.change_tile(new_i, new_j, from_ele)
-                move_go.grid_pos = (new_i, new_j)
-            else:
-                exit_code = 1
-        else:
-            exit_code = 1
-        return exit_code
-
-    def check_place_bomb(self, move_go):
-        exit_code = 0
-        i, j = move_go.grid_pos
-        from_ele = self.game_grid[j][i]
-        if from_ele[0] != 'b': # if there's not a bomb already
-            exit_code = 0
-        else:
-            exit_code = 1
-        return exit_code
-
-    def place_bomb(self, move_go):
-        exit_code = 0
-        i, j = move_go.grid_pos
-        from_ele = self.game_grid[j][i]
-        if from_ele[0] != 'b': # if there's not a bomb already
-            if move_go.dest:   # if move_go is moving
-                ps_i, ps_j = move_go.source
-                from_ele = self.game_grid[ps_j][ps_i]
-                self.change_tile(ps_i, ps_j, 'b')
-                self.add_bomb((ps_i, ps_j))
-            else:
-                p_i, p_j = move_go.grid_pos
-                from_ele = self.game_grid[p_j][p_i]
-                if len(from_ele) == 1:
-                    self.change_tile(p_i, p_j, 'b' + from_ele)
-                    self.add_bomb((p_i, p_j))
-                else:
-                    self.change_tile(p_i, p_j, 'b')
-                    self.add_bomb((p_i, p_j))
-        else:
-            exit_code = 1
-        return exit_code
-
-    def add_bomb(self, grid_pos):
-        new_bomb = Bomb(grid_pos, self.bomb_tex)
-        self.bombs.append(new_bomb)
-
-    def update_bombs(self, player):
-        bombs_to_blow = []
-        for i in range(len(self.bombs)):
-            bomb = self.bombs[i]
-            if bomb.isGonnaExplode():
-                bombs_to_blow.append([bomb, i])
-
-        for b2b in bombs_to_blow:
-            i,j = b2b[0].grid_pos[0], b2b[0].grid_pos[1]
-            self.change_tile( i, j, 'e')
-            move = "B%d/%d" % (i, j)
-            player.make_move(move)
-            is_in = (b2b[0] in self.bombs)
-            if is_in and len(self.bombs) > b2b[1]:
-                del self.bombs[b2b[1]]   # delete bomb from bomb list
-
-    def print_grid(self):
-        for row in self.game_grid:
-            print(row)
-        print('\n')
-
-    def update(self, player):
-        self.update_bombs(player)
-
-    def draw(self, screen):
-        screen.blit(self.floor_tex, (0,0))
-        screen.blit(self.bounding_walls_tex, (0,0))
-        for static_wall in self.static_walls:
-            screen.blit(self.static_wall_tex, static_wall)
-        for destructable_wall in self.destructable_walls:
-            screen.blit(self.destructable_wall_tex, destructable_wall)
-        for bomb in self.bombs:
-            bomb.draw(screen)
-
-def main(username, client_port, server_ip, server_port, is_server):
-    gameManager = GameManager(username, client_port, server_ip, server_port, is_server)
+def main(username, client_port, server_ip, server_port, is_server, layout):
+    gameManager = GameManager(username, client_port, server_ip, server_port, is_server, layout)
     gameManager.start_game()

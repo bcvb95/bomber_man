@@ -63,6 +63,11 @@ class BasePlayer(object):
         """
         print("Do move: %s" % move)
 
+
+    #--------- Must be overridden by derived classes ---------#
+    def init_game(self, init_msg):
+        pass
+
     def print_players_online(self):
         if self.server != None:
             print(self.server.connected_clients)
