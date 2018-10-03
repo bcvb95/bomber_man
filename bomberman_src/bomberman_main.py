@@ -228,10 +228,10 @@ class GameManager(object):
 
 
     def draw(self):
-        self.screen.fill((200,200,200))
+        #self.screen.fill((200,200,200))
+        self.gameboard.draw(self.screen)
         for move_object in self.player_moveable_objects:
             move_object.draw(self.screen)
-        self.gameboard.draw(self.screen)
         pygame.display.flip()
 
     def execute_move(self, move):
@@ -259,6 +259,20 @@ class GameBoard(object):
         self.game_grid = [['e' for x in range(self.size[0])] for y in range(self.size[1])]
         self.bombs = []
 
+        self.bounding_walls_tex = GAMEBOARD_TEXTURES["bounding_walls"]
+        self.floor_tex = GAMEBOARD_TEXTURES["floor"]
+        self.static_wall_tex = GAMEBOARD_TEXTURES["static_wall"]
+
+        self.static_walls = []
+        offset = TILE_SIZE
+        for i in range(1, size[0]-1):
+            x = i * TILE_SIZE + offset
+            for j in range(1, size[1]-1):
+                y = j * TILE_SIZE + offset
+                if (i % 2 != 0 and j % 2 != 0):
+                    self.game_grid[i][j] = 'w'
+                    self.static_walls.append((x,y))
+
     def change_tile(self, i, j, new_ele):
         self.game_grid[j][i] = new_ele
 
@@ -279,22 +293,6 @@ class GameBoard(object):
         else:
             exit_code = 1
         return exit_code
-
-
-
-        self.bounding_walls_tex = GAMEBOARD_TEXTURES["bounding_walls"]
-        self.floor = GAMEBOARD_TEXTURES["floor"]
-        self.static_wall_tex = GAMEBOARD_TEXTURES["static_wall"]
-
-        self.static_walls = []
-        offset = TILE_SIZE
-        for i in range(1, size[0]-1):
-            x = i * TILE_SIZE + offset
-            for j in range(1, size[1]-1):
-                y = j * TILE_SIZE + offset
-                if (i % 2 != 0 and j % 2 != 0):
-                    self.game_grid[i][j] = 'w'
-                    self.static_walls.append((x,y))
 
     def make_move(self, move_go, move):
         exit_code = 0
