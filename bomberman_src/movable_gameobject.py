@@ -32,11 +32,11 @@ class MoveableGameObject(GameObject):
     def move(self, dir):
         if self.dest:
             return 1
+        self.source = self.grid_pos
         self.movecount = 0
         self.cur_dir = dir
         self.dest = ((self.rect.topleft[0]+dir[0]*self.rect.width, \
                     self.rect.topleft[1]+dir[1]*self.rect.height))
-        self.source = self.rect.topleft
         return 0
         #PLANT BOMB HERE
 
