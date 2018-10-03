@@ -1,4 +1,5 @@
 from bomberman_consts import *
+from bomb import Bomb
 
 class GameBoard(object):
     """
