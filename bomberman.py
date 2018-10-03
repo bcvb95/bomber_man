@@ -28,7 +28,11 @@ if __name__ == "__main__":
 
     import bomberman_main
 
+    bomberman_main.main(args.username, args.port, args.server_ip, args.server_port, args.is_server)
+
+"""
     try:
         bomberman_main.main(args.username, args.port, args.server_ip, args.server_port, args.is_server)
     except Exception as e:
         sys.exit("Game crashed with error: %s" % e)
+"""
