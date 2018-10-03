@@ -48,9 +48,3 @@ MOVE_TO_DIR_DICT = {
     'd' : (0, 1)
 }
 
-
-#------ RESOURCES ------#
-RES_PATH = "%s/res" % os.path.dirname(os.path.realpath(__file__))
-PLAYER_IMG_DICT= {}
-BOMB_IMG = None
-GAMEBOARD_TEXTURES = {}
